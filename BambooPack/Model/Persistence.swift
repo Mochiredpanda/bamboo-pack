@@ -1,28 +1,24 @@
-//
-//  Persistence.swift
-//  BambooPack
-//
-//  Created by Jiyu He on 2/15/26.
-//
-
 import CoreData
 
 struct PersistenceController {
     static let shared = PersistenceController()
 
-    @MainActor
-    static let preview: PersistenceController = {
+    static var preview: PersistenceController = {
         let result = PersistenceController(inMemory: true)
         let viewContext = result.container.viewContext
-        for _ in 0..<10 {
-            let newItem = Item(context: viewContext)
-            newItem.timestamp = Date()
+        for i in 0..<5 {
+            let newItem = Parcel(context: viewContext)
+            newItem.id = UUID()
+            newItem.title = "Sample Parcel \(i)"
+            newItem.trackingNumber = "1Z999AA10123456784"
+            newItem.carrier = "UPS"
+            newItem.status = 1
+            newItem.dateAdded = Date()
+            newItem.lastUpdated = Date()
         }
         do {
             try viewContext.save()
         } catch {
-            // Replace this implementation with code to handle the error appropriately.
-            // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
             let nsError = error as NSError
             fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
         }
@@ -32,15 +28,16 @@ struct PersistenceController {
     let container: NSPersistentCloudKitContainer
 
     init(inMemory: Bool = false) {
+        // Load the model from the bundle
+        // Since we created the xcdatamodeld manually, we need to ensure the model name matches.
         container = NSPersistentCloudKitContainer(name: "BambooPack")
+        
         if inMemory {
             container.persistentStoreDescriptions.first!.url = URL(fileURLWithPath: "/dev/null")
         }
+        
         container.loadPersistentStores(completionHandler: { (storeDescription, error) in
             if let error = error as NSError? {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-
                 /*
                  Typical reasons for an error here include:
                  * The parent directory does not exist, cannot be created, or disallows writing.
@@ -52,6 +49,8 @@ struct PersistenceController {
                 fatalError("Unresolved error \(error), \(error.userInfo)")
             }
         })
+        
         container.viewContext.automaticallyMergesChangesFromParent = true
+        container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
     }
 }

@@ -1,12 +1,4 @@
-//
-//  BambooPackApp.swift
-//  BambooPack
-//
-//  Created by Jiyu He on 2/15/26.
-//
-
 import SwiftUI
-import CoreData
 
 @main
 struct BambooPackApp: App {
