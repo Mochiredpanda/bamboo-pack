@@ -2,13 +2,13 @@ import SwiftUI
 
 struct AddParcelSheet: View {
     @Environment(\.managedObjectContext) private var viewContext
-    @Environment(\.presentationMode) var presentationMode
+    @Environment(\.dismiss) var dismiss // Updated from presentationMode for iOS 15+/macOS 12+
     
     @StateObject private var viewModel = ParcelViewModel()
     
     // Form States
     @State private var title: String = ""
-    @State private var status: ParcelStatus = .ordered
+    @State private var status: ParcelStatus = .shipped
     @State private var carrier: CarrierDetector.Carrier = .auto
     @State private var direction: ParcelDirection
     
@@ -22,20 +22,26 @@ struct AddParcelSheet: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
-                Section(header: Text("Details")) {
-                    TextField("Title (e.g. New Keyboard)", text: $title)
-                    
-                    // Status Picker (Ordered vs Shipped for new items)
+                // MARK: - Core Info Section
+                Section {
+
+
                     Picker("Status", selection: $status) {
-                        Text("Ordered").tag(ParcelStatus.ordered)
                         Text("Shipped").tag(ParcelStatus.shipped)
+                        Text("Ordered").tag(ParcelStatus.ordered)
                     }
-                    .pickerStyle(SegmentedPickerStyle())
-                    
+                    .pickerStyle(.segmented)
+                } header: {
+                    Text("Shipment Details")
+                }
+                
+                // MARK: - Tracking / Order Section
+                Section {
                     if status == .ordered {
-                        TextField("Order Number (Optional)", text: $orderNumber)
+                        TextField("Order Number", text: $orderNumber)
+                        // Add a subtext if it's truly optional
                     } else {
                         TextField("Tracking Number", text: $trackingNumber)
                         
@@ -45,41 +51,60 @@ struct AddParcelSheet: View {
                             }
                         }
                     }
+                    
+                    TextField("Package Name (Optional)", text: $title)
+                } header: {
+                    Text("Parcel Details")
                 }
                 
-                Section(header: Text("Notes")) {
+                // Notes Section
+                Section {
                     TextEditor(text: $notes)
-                        .frame(height: 100)
+                        .frame(minHeight: 80, alignment: .top) // Minimum readable height
+                        // This allows the text editor to grow if the form has extra space
+                        .frame(maxHeight: .infinity) 
+                } header: {
+                    Text("Notes")
                 }
             }
+            .formStyle(.grouped) // Standardizes the look across platforms
+            // 1. Navigation Title: Standard approach
             .navigationTitle("Add Parcel")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        presentationMode.wrappedValue.dismiss()
+                        dismiss()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        viewModel.addParcel(
-                            title: title,
-                            trackingNumber: trackingNumber,
-                            status: status,
-                            direction: direction,
-                            orderNumber: orderNumber,
-                            carrier: carrier,
-                            notes: notes
-                        )
-                        presentationMode.wrappedValue.dismiss()
+                        saveParcel()
                     }
                     .disabled(isSaveDisabled)
+                    .fontWeight(.bold) // Visual cue that this is the primary action
                 }
             }
         }
+        // We set a minimum usable width, but allow it to grow.
+        // We do not lock the height, allowing the user to resize the window vertically.
+        .frame(minWidth: 400, idealWidth: 450, maxWidth: .infinity, 
+               minHeight: 400, idealHeight: 550, maxHeight: .infinity)
+    }
+    
+    private func saveParcel() {
+        viewModel.addParcel(
+            title: title,
+            trackingNumber: trackingNumber,
+            status: status,
+            direction: direction,
+            orderNumber: orderNumber,
+            carrier: carrier,
+            notes: notes
+        )
+        dismiss()
     }
     
     var isSaveDisabled: Bool {
-        if title.isEmpty { return true }
         if status == .shipped && trackingNumber.isEmpty { return true }
         return false
     }
