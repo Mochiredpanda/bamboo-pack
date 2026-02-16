@@ -13,21 +13,30 @@ class ParcelViewModel: ObservableObject {
     // but typically we use @FetchRequest in Views. 
     // This ViewModel will focus on Logic and CRUD actions.
     
-    func addParcel(title: String, trackingNumber: String, direction: ParcelDirection, notes: String?) {
+    func addParcel(title: String, trackingNumber: String, status: ParcelStatus, direction: ParcelDirection, orderNumber: String?, carrier: CarrierDetector.Carrier, notes: String?) {
         let newParcel = Parcel(context: viewContext)
         newParcel.id = UUID()
         newParcel.title = title
-        newParcel.trackingNumber = trackingNumber
+        newParcel.trackingNumber = trackingNumber.isEmpty ? nil : trackingNumber
+        newParcel.orderNumber = orderNumber
         newParcel.dateAdded = Date()
         newParcel.lastUpdated = Date()
+        newParcel.statusEnum = status
         newParcel.directionEnum = direction
-        newParcel.statusEnum = .ordered // Default status
         newParcel.notes = notes
         newParcel.archived = false
         
-        // Auto-detect carrier
-        let detectedCarrier = CarrierDetector.detect(trackingNumber: trackingNumber)
-        newParcel.carrier = detectedCarrier.name
+        // Carrier Logic
+        if carrier == .auto {
+            if !trackingNumber.isEmpty {
+                let detected = CarrierDetector.detect(trackingNumber: trackingNumber)
+                newParcel.carrier = detected.name
+            } else {
+                newParcel.carrier = nil
+            }
+        } else {
+            newParcel.carrier = carrier.name
+        }
         
         saveContext()
     }

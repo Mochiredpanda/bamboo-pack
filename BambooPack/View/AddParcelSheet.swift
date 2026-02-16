@@ -6,9 +6,15 @@ struct AddParcelSheet: View {
     
     @StateObject private var viewModel = ParcelViewModel()
     
+    // Form States
     @State private var title: String = ""
-    @State private var trackingNumber: String = ""
+    @State private var status: ParcelStatus = .ordered
+    @State private var carrier: CarrierDetector.Carrier = .auto
     @State private var direction: ParcelDirection
+    
+    // Dynamic Fields
+    @State private var trackingNumber: String = ""
+    @State private var orderNumber: String = ""
     @State private var notes: String = ""
     
     init(defaultDirection: ParcelDirection = .incoming) {
@@ -20,10 +26,23 @@ struct AddParcelSheet: View {
             Form {
                 Section(header: Text("Details")) {
                     TextField("Title (e.g. New Keyboard)", text: $title)
-                    TextField("Tracking Number", text: $trackingNumber)
-                    Picker("Direction", selection: $direction) {
-                        ForEach(ParcelDirection.allCases, id: \.self) { direction in
-                            Text(direction.title).tag(direction)
+                    
+                    // Status Picker (Ordered vs Shipped for new items)
+                    Picker("Status", selection: $status) {
+                        Text("Ordered").tag(ParcelStatus.ordered)
+                        Text("Shipped").tag(ParcelStatus.shipped)
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                    
+                    if status == .ordered {
+                        TextField("Order Number (Optional)", text: $orderNumber)
+                    } else {
+                        TextField("Tracking Number", text: $trackingNumber)
+                        
+                        Picker("Carrier", selection: $carrier) {
+                            ForEach(CarrierDetector.Carrier.allCases) { carrier in
+                                Text(carrier.name).tag(carrier)
+                            }
                         }
                     }
                 }
@@ -43,16 +62,25 @@ struct AddParcelSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         viewModel.addParcel(
-                            title: title, 
-                            trackingNumber: trackingNumber, 
-                            direction: direction, 
+                            title: title,
+                            trackingNumber: trackingNumber,
+                            status: status,
+                            direction: direction,
+                            orderNumber: orderNumber,
+                            carrier: carrier,
                             notes: notes
                         )
                         presentationMode.wrappedValue.dismiss()
                     }
-                    .disabled(title.isEmpty || trackingNumber.isEmpty)
+                    .disabled(isSaveDisabled)
                 }
             }
         }
+    }
+    
+    var isSaveDisabled: Bool {
+        if title.isEmpty { return true }
+        if status == .shipped && trackingNumber.isEmpty { return true }
+        return false
     }
 }

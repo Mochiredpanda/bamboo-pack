@@ -2,14 +2,16 @@ import Foundation
 
 struct CarrierDetector {
     
-    enum Carrier: String, CaseIterable {
+    public enum Carrier: String, CaseIterable, Identifiable {
+        case auto = "Auto-Detect"
         case ups = "UPS"
         case fedex = "FedEx"
         case usps = "USPS"
         case dhl = "DHL"
-        case unknown = "Unknown"
+        case unknown = "Other"
         
-        var name: String { rawValue }
+        public var id: String { rawValue }
+        public var name: String { rawValue }
     }
     
     static func detect(trackingNumber: String) -> Carrier {
