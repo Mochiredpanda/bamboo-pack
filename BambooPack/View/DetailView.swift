@@ -8,128 +8,137 @@ struct DetailView: View {
     @State private var showFullHistory = false
     
     var body: some View {
-        Form {
+        VStack(spacing: 0) {
             // MARK: - 1. Latest Tracking Card
-            // This section is styled to look like a "Hero" card
-            Section {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(alignment: .top) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("LATEST UPDATE")
-                                .font(.caption)
-                                .fontWeight(.bold)
-                                .foregroundColor(.secondary)
-                            
-                            // ⚠️ Assumption: You have a way to get the latest status text
-                            Text(parcel.statusEnum.title) 
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundColor(.primary)
-                            
-                            Text("Test City, CA • Date, Time") // Placeholder
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        Spacer()
-                        
-                        // Status Icon
-                        Image(systemName: parcel.statusEnum.icon)
-                            .font(.system(size: 34))
-                            .foregroundColor(.blue)
-                    }
-                    
-                    Divider()
-                    
-                    Button {
-                        showFullHistory = true
-                    } label: {
-                        HStack {
-                            Text("View Full History")
-                                .fontWeight(.medium)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                        }
-                        .contentShape(Rectangle()) // Makes the whole row tappable
-                    }
-                    .buttonStyle(.plain) // Removes default button styling to blend in
-                    .foregroundColor(.blue)
-                }
-                .padding(16)
-                .background(Color(NSColor.controlBackgroundColor)) // subtle distinct background
-                .cornerRadius(12)
-                .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
-                .listRowSeparator(.hidden)
-            }
-            .listSectionSeparator(.hidden)   
-            .listRowInsets(EdgeInsets()) // Removes default List padding to let card fill space
-            .listRowBackground(Color.clear) // Removes default gray row background
+            // Hero card style
+            latestTrackingCard
+                .padding()
 
-            // Core Info
-            Section("Shipment Details") {
-                // Editable Tracking Number
-                TextField("Tracking Number", text: Binding(
-                    get: { parcel.trackingNumber ?? "" },
-                    set: { parcel.trackingNumber = $0 }
-                ))
-                
-                // Editable Carrier Picker
-                // We bridge the String in CoreData to the Enum for the picker
-                Picker("Carrier", selection: Binding(
-                    get: { 
-                        // Match the string to the Enum, or default to .auto
-                        CarrierDetector.Carrier.allCases.first { $0.name == parcel.carrier } ?? .auto 
-                    },
-                    set: { 
-                        // Save the Enum name back to the string
-                        parcel.carrier = $0.name 
-                    }
-                )) {
-                    ForEach(CarrierDetector.Carrier.allCases) { carrier in
-                        Text(carrier.name).tag(carrier)
-                    }
+            // MARK: - 2. Core Info Form
+            Form {
+                Section("Shipment Details") {
+                    trackingNumberField
+                    carrierPicker
+                    titleField
                 }
                 
-                // Editable Title
-                TextField("Package Name", text: Binding(
-                    get: { parcel.title ?? "" },
-                    set: { parcel.title = $0 }
-                ))
-            }
-            
-            // MARK: - 3. Notes (Resizable)
-            Section("Notes") {
-                TextEditor(text: Binding(
-                    get: { parcel.notes ?? "" },
-                    set: { parcel.notes = $0 }
-                ))
-                .frame(minHeight: 100, alignment: .top)
-            }
-            
-            // MARK: - 4. Actions
-            Section {
-                Button {
-                    viewModel.toggleArchive(parcel: parcel)
-                } label: {
-                    Label(
-                        parcel.archived ? "Unarchive Parcel" : "Archive Parcel",
-                        systemImage: parcel.archived ? "arrow.uturn.backward.square" : "archivebox"
-                    )
+                Section("Notes") {
+                    notesEditor
                 }
-                .foregroundColor(parcel.archived ? .blue : .red)
+                
+                Section {
+                    archiveButton
+                }
             }
+            .formStyle(.grouped)
         }
-        .formStyle(.grouped) // ⭐️ Key for Consistency with AddSheet
         .navigationTitle(parcel.title ?? "Details")
-        .frame(minWidth: 400, minHeight: 500) // Reasonable default size
-        
-        // The Sheet for Full History
+        .frame(minWidth: 400, minHeight: 500)
         .sheet(isPresented: $showFullHistory) {
             TrackingHistoryView(parcel: parcel)
         }
     }
-}
+    
+    // MARK: - Subviews
+    // MARK: - Latest Tracking Card
+    // separated from the main form
+    private var latestTrackingCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("LATEST UPDATE")
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .foregroundColor(.secondary)
+                    
+                    Text(parcel.statusEnum.title)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primary)
+                    
+                    Text("Test City, CA • Date, Time") // Placeholder
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                Image(systemName: parcel.statusEnum.icon)
+                    .font(.system(size: 34))
+                    .foregroundColor(.blue)
+            }
+            
+            Divider()
+            
+            Button {
+                showFullHistory = true
+            } label: {
+                HStack {
+                    Text("View Full History")
+                        .fontWeight(.medium)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundColor(.blue)
+        }
+        .padding(16)
+        .background(Color(NSColor.controlBackgroundColor))
+        .cornerRadius(12)
+    }
+    
+    private var trackingNumberField: some View {
+        TextField("Tracking Number", text: Binding(
+            get: { parcel.trackingNumber ?? "" },
+            set: { parcel.trackingNumber = $0 }
+        ))
+    }
+    
+    private var carrierPicker: some View {
+        Picker("Carrier", selection: Binding(
+            get: {
+                CarrierDetector.Carrier.allCases.first { $0.name == parcel.carrier } ?? .auto
+            },
+            set: {
+                parcel.carrier = $0.name
+            }
+        )) {
+            ForEach(CarrierDetector.Carrier.allCases) { carrier in
+                Text(carrier.name).tag(carrier)
+            }
+        }
+    }
+    
+    private var titleField: some View {
+        TextField("Package Name", text: Binding(
+            get: { parcel.title ?? "" },
+            set: { parcel.title = $0 }
+        ))
+    }
+    
+    private var notesEditor: some View {
+        TextEditor(text: Binding(
+            get: { parcel.notes ?? "" },
+            set: { parcel.notes = $0 }
+        ))
+        .frame(minHeight: 100, alignment: .top)
+    }
+    
+    private var archiveButton: some View {
+        Button {
+            viewModel.toggleArchive(parcel: parcel)
+        } label: {
+            Label(
+                parcel.archived ? "Unarchive Parcel" : "Archive Parcel",
+                systemImage: parcel.archived ? "arrow.uturn.backward.square" : "archivebox"
+            )
+        }
+        .foregroundColor(parcel.archived ? .blue : .red)
+    }
+} 
 
 // MARK: - Subview: Tracking History
 // A simple view to show the full list when the button is clicked
