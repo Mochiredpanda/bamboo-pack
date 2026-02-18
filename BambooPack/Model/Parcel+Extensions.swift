@@ -16,7 +16,7 @@ extension Parcel {
     }
 }
 
-public enum ParcelStatus: Int, CaseIterable {
+public enum ParcelStatus: Int, CaseIterable, Codable {
     case ordered = 0
     case shipped = 1
     case inTransit = 2

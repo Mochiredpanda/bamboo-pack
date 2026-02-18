@@ -13,6 +13,103 @@ class ParcelViewModel: ObservableObject {
     // but typically we use @FetchRequest in Views. 
     // This ViewModel will focus on Logic and CRUD actions.
     
+    // MARK: - Tracking Service Integration
+    
+    private let trackingService: TrackingService
+    
+    init(service: TrackingService = MockTrackingService()) {
+        self.trackingService = service
+    }
+    
+    @MainActor
+    func refreshTracking(for parcel: Parcel) async {
+        guard let trackingNumber = parcel.trackingNumber, !trackingNumber.isEmpty,
+              let carrier = parcel.carrier else {
+            return
+        }
+        
+        isLoading = true
+        
+        do {
+            // Check if we should use Real Service based on settings
+            // For MVP, we can toggle this or default to Mock if no key
+            // Ideally, we'd inject the correct service instance at init time.
+            // For this demo, let's just stick with the injected service (Mock by default)
+            // or switch to Real if a key exists:
+            
+            let serviceToUse: TrackingService
+            if let apiKey = UserDefaults.standard.string(forKey: "tracking_api_key"), !apiKey.isEmpty {
+                 serviceToUse = RealTrackingService()
+            } else {
+                 serviceToUse = MockTrackingService()
+            }
+            
+            let info = try await serviceToUse.fetchTrackingInfo(carrier: carrier, trackingNumber: trackingNumber)
+            
+            // Update Core Data
+            parcel.statusEnum = info.status
+            parcel.lastUpdated = Date()
+            
+            // Serialize History
+            if let encodedHistory = try? JSONEncoder().encode(info.events),
+               let historyString = String(data: encodedHistory, encoding: .utf8) {
+                parcel.trackingHistory = historyString
+            }
+            
+            saveContext()
+            
+        } catch {
+            print("Tracking Error: \(error.localizedDescription)")
+            // Optionally set error state
+        }
+        
+        isLoading = false
+    }
+    
+    // Helper to decode history for View consumption
+    func getTrackingEvents(for parcel: Parcel) -> [TrackingEvent] {
+        guard let historyString = parcel.trackingHistory,
+              let data = historyString.data(using: .utf8) else {
+            return []
+        }
+        
+        do {
+            return try JSONDecoder().decode([TrackingEvent].self, from: data)
+        } catch {
+            print("Failed to decode history: \(error)")
+            return []
+        }
+    }
+    
+    // Helper to append a single event (used by Smart Scraper)
+    func addTrackingEvent(parcel: Parcel, description: String, location: String?, status: ParcelStatus) {
+        var currentEvents = getTrackingEvents(for: parcel)
+        
+        // Create new event
+        let newEvent = TrackingEvent(
+            id: UUID(),
+            timestamp: Date(),
+            description: description,
+            location: location,
+            status: status
+        )
+        
+        // Prepend (newest first) or Append? Usually newest first for history.
+        // Let's prepend to match the sort order in UI
+        currentEvents.insert(newEvent, at: 0)
+        
+        // Encode and Save
+        if let encodedHistory = try? JSONEncoder().encode(currentEvents),
+           let historyString = String(data: encodedHistory, encoding: .utf8) {
+            parcel.trackingHistory = historyString
+            parcel.statusEnum = status
+            parcel.lastUpdated = Date()
+            saveContext()
+        }
+    }
+
+    // MARK: - Core Data Operations
+
     func addParcel(title: String, trackingNumber: String, status: ParcelStatus, direction: ParcelDirection, orderNumber: String?, carrier: CarrierDetector.Carrier, notes: String?) {
         let newParcel = Parcel(context: viewContext)
         newParcel.id = UUID()

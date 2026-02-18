@@ -7,6 +7,10 @@ struct DetailView: View {
     // State to control the Full History sheet
     @State private var showFullHistory = false
     
+    // Smart Scraper State
+    @State private var showScraperSheet = false
+    @State private var scraperURL: URL?
+    
     var body: some View {
         VStack(spacing: 0) {
             // MARK: - 1. Latest Tracking Card
@@ -26,6 +30,7 @@ struct DetailView: View {
                     notesEditor
                 }
                 
+                
                 Section {
                     archiveButton
                 }
@@ -33,9 +38,48 @@ struct DetailView: View {
             .formStyle(.grouped)
         }
         .navigationTitle(parcel.title ?? "Details")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    if let tracking = parcel.trackingNumber, !tracking.isEmpty,
+                       let carrier = parcel.carrier {
+                        // Activate Smart Scraper
+                        if let url = SmartScraperLogic.getTrackingURL(carrier: carrier, trackingNumber: tracking) {
+                            self.scraperURL = url
+                            self.showScraperSheet = true
+                        }
+                    }
+                } label: {
+                    Label("Refresh", systemImage: "arrow.clockwise")
+                }
+            }
+        }
         .frame(minWidth: 400, minHeight: 500)
         .sheet(isPresented: $showFullHistory) {
-            TrackingHistoryView(parcel: parcel)
+            TrackingHistoryView(parcel: parcel, viewModel: viewModel)
+        }
+        .sheet(isPresented: $showScraperSheet) {
+            if let url = scraperURL {
+                WebViewContainer(url: url) { scrapedText in
+                    // Logic: Parse the text
+                    if let result = SmartScraperLogic.parseTrackingStatus(from: scrapedText) {
+                        print("Smart Scraper Found: \(result.status)")
+                        
+                        // Update Parcel
+                        // Note: WebViewContainer is on Main Thread (UI), so this is safe
+                        viewModel.addTrackingEvent(
+                            parcel: parcel,
+                            description: result.description ?? "Status Updated via Smart Scraper",
+                            location: nil,
+                            status: result.status
+                        )
+                        
+                        // Close Sheet on success
+                        showScraperSheet = false
+                    }
+                }
+                .frame(minWidth: 500, minHeight: 600)
+            }
         }
     }
     
@@ -56,9 +100,11 @@ struct DetailView: View {
                         .fontWeight(.bold)
                         .foregroundColor(.primary)
                     
-                    Text("Test City, CA • Date, Time") // Placeholder
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                    if let lastUpdated = parcel.lastUpdated {
+                        Text(lastUpdated.formatted(date: .abbreviated, time: .shortened))
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
                 }
                 
                 Spacer()
@@ -144,21 +190,33 @@ struct DetailView: View {
 // A simple view to show the full list when the button is clicked
 struct TrackingHistoryView: View {
     let parcel: Parcel
+    @ObservedObject var viewModel: ParcelViewModel
     @Environment(\.dismiss) var dismiss
     
     var body: some View {
         NavigationStack {
             List {
-                // Mock Data Loop - Replace with parcel.historyArray
-                ForEach(0..<5) { i in
-                    VStack(alignment: .leading) {
-                        Text("Arrived at facility")
-                            .font(.headline)
-                        Text("Seattle, WA • Feb \(14-i)")
+                let events = viewModel.getTrackingEvents(for: parcel)
+                if events.isEmpty {
+                    ContentUnavailableView("No History", systemImage: "shippingbox", description: Text("No tracking updates found yet."))
+                } else {
+                    ForEach(events) { event in
+                        VStack(alignment: .leading) {
+                            Text(event.description)
+                                .font(.headline)
+                            
+                            HStack {
+                                if let location = event.location {
+                                    Text(location)
+                                }
+                                Text("•")
+                                Text(event.timestamp.formatted(date: .abbreviated, time: .shortened))
+                            }
                             .font(.caption)
                             .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 4)
                     }
-                    .padding(.vertical, 4)
                 }
             }
             .navigationTitle("Tracking History")
