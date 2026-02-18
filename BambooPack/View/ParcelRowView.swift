@@ -4,28 +4,32 @@ struct ParcelRowView: View {
     @ObservedObject var parcel: Parcel
     
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            // Status Icon with background
+        HStack(alignment: .center, spacing: 14) {
+            // 1. DYNAMIC ICON
+            // Visual cue for status & direction
             ZStack {
                 Circle()
-                    .fill(Color(NSColor.controlBackgroundColor))
-                    .frame(width: 36, height: 36)
+                    .fill(statusColor.opacity(0.15))
+                    .frame(width: 42, height: 42) // Slightly larger touch target
                 
-                Image(systemName: parcel.statusEnum.icon)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(parcel.statusEnum == .delivered ? .green : .blue)
+                Image(systemName: iconName)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(statusColor)
             }
-            // Removed fixed frame to allow flexible layout if needed, but Circle handles it.
             
-            VStack(alignment: .leading, spacing: 4) {
+            // 2. MAIN INFO (Title & Carrier)
+            VStack(alignment: .leading, spacing: 3) {
                 Text(parcel.title ?? "Untitled Parcel")
-                    .font(.headline)
-                    .fontWeight(.medium)
+                    .font(.body) // Standard readable size
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
                 
                 HStack(spacing: 6) {
-                    if let carrier = parcel.carrier, !carrier.isEmpty {
+                    // Carrier Tag
+                    if let carrier = parcel.carrier, !carrier.isEmpty, carrier != "Auto" {
                         Text(carrier.uppercased())
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.system(size: 9, weight: .bold))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(Color.secondary.opacity(0.1))
@@ -33,12 +37,9 @@ struct ParcelRowView: View {
                             .foregroundColor(.secondary)
                     }
                     
-                    if let tracking = parcel.trackingNumber, !tracking.isEmpty {
-                        Text(tracking)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    } else if let order = parcel.orderNumber, !order.isEmpty {
-                        Text(order)
+                    // Fallback description if no carrier
+                    if parcel.statusEnum == .ordered {
+                        Text("Order Placed")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -47,26 +48,70 @@ struct ParcelRowView: View {
             
             Spacer()
             
+            // 3. HERO STATUS (Right Side)
+            // Prioritizes "Time" or "Action" over raw dates
             VStack(alignment: .trailing, spacing: 2) {
-                // Status Text
-                Text(parcel.statusEnum.title)
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundColor(parcel.statusEnum == .delivered ? .green : .blue)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule()
-                            .fill(parcel.statusEnum == .delivered ? Color.green.opacity(0.1) : Color.blue.opacity(0.1))
-                    )
-                
-                if let lastUpdated = parcel.lastUpdated {
-                    Text(lastUpdated, style: .date)
+                if parcel.statusEnum == .delivered {
+                    Text("Delivered")
+                        .font(.callout)
+                        .fontWeight(.bold)
+                        .foregroundColor(.green)
+                    
+                    // Show relative time for delivered items (e.g. "Yesterday")
+                    if let date = parcel.lastUpdated {
+                        Text(date.formatted(.relative(presentation: .named)))
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                } else if parcel.statusEnum == .ordered {
+                    // For ordered items, there is no delivery date yet
+                    Text("Processing")
+                        .font(.callout)
+                        .fontWeight(.medium)
+                        .foregroundColor(.secondary)
+                } else {
+                    // ACTIVE SHIPMENT logic
+                    // If we had an 'estimatedDeliveryDate', we would calculate "In 3 Days"
+                    // Since we only have lastUpdated in MVP, we show status clearly
+                    Text(parcel.statusEnum.title)
+                        .font(.callout)
+                        .fontWeight(.medium)
+                        .foregroundColor(.blue)
+                    
+                    // Mocking the "Time Remaining" logic for the UX demo
+                    // In a real app, replace this with `estimatedDeliveryDate` logic
+                    Text("Arriving Soon") 
                         .font(.caption2)
-                        .foregroundColor(.secondary.opacity(0.6))
+                        .foregroundColor(.secondary)
                 }
             }
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, 6) // Breathing room
+    }
+    
+    // MARK: - Computed Properties for Logic
+    
+    var statusColor: Color {
+        switch parcel.statusEnum {
+        case .delivered: return .green
+        case .shipped: return .blue
+        case .ordered: return .gray // Neutral for "not moving yet"
+        case .exception: return .red // Important alert color
+        default: return .blue
+        }
+    }
+    
+    var iconName: String {
+        // Business Logic: Differentiate direction visual
+        if parcel.directionEnum == .outgoing {
+            return "arrow.up.cube" // Outgoing icon
+        }
+        
+        switch parcel.statusEnum {
+        case .delivered: return "checkmark" // Clear success indicator
+        case .ordered: return "cart" // Shopping context
+        case .shipped: return "truck.box" // Transit context
+        default: return "cube"
+        }
     }
 }
