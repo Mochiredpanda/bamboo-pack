@@ -87,7 +87,10 @@ struct DetailView: View {
     // MARK: - Latest Tracking Card
     // separated from the main form
     private var latestTrackingCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let events = viewModel.getTrackingEvents(for: parcel)
+        let latestEvent = events.first
+        
+        return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("LATEST UPDATE")
@@ -95,13 +98,29 @@ struct DetailView: View {
                         .fontWeight(.bold)
                         .foregroundColor(.secondary)
                     
-                    Text(parcel.statusEnum.title)
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundColor(.primary)
-                    
-                    if let lastUpdated = parcel.lastUpdated {
-                        Text(lastUpdated.formatted(date: .abbreviated, time: .shortened))
+                    if let event = latestEvent {
+                        Text(event.description)
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.primary)
+                            .lineLimit(2)
+                        
+                        HStack {
+                            if let location = event.location {
+                                Text(location)
+                            }
+                            Text("•")
+                            Text(event.timestamp.formatted(date: .abbreviated, time: .shortened))
+                        }
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    } else {
+                        Text("Needs to be updated")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.secondary)
+                        
+                        Text("Pull or tap Refresh to check status")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
@@ -198,7 +217,7 @@ struct TrackingHistoryView: View {
             List {
                 let events = viewModel.getTrackingEvents(for: parcel)
                 if events.isEmpty {
-                    ContentUnavailableView("No History", systemImage: "shippingbox", description: Text("No tracking updates found yet."))
+                    ContentUnavailableView("Needs to be updated", systemImage: "arrow.clockwise", description: Text("Pull or tap Refresh to check status."))
                 } else {
                     ForEach(events) { event in
                         VStack(alignment: .leading) {

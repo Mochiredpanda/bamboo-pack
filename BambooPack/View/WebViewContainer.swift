@@ -37,14 +37,20 @@ struct WebViewContainer: ViewRepresentable {
         let config = WKWebViewConfiguration()
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
+        
+        #if os(macOS)
+        webView.autoresizingMask = [.width, .height]
+        #endif
+        
         return webView
     }
     
     private func loadRequest(in webView: WKWebView) {
-        if webView.url != url {
-            let request = URLRequest(url: url)
-            webView.load(request)
+        if let currentURL = webView.url, currentURL == url {
+            return
         }
+        let request = URLRequest(url: url)
+        webView.load(request)
     }
     
     class Coordinator: NSObject, WKNavigationDelegate {
