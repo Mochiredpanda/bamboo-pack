@@ -9,8 +9,8 @@ enum SidebarCategory: String, CaseIterable, Identifiable {
     
     var icon: String {
         switch self {
-        case .incoming: return "tray.and.arrow.down"
-        case .outgoing: return "tray.and.arrow.up"
+        case .incoming: return "shippingbox"
+        case .outgoing: return "arrow.up.circle"
         case .archive: return "archivebox"
         }
     }
