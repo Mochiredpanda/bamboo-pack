@@ -35,12 +35,17 @@ struct WebViewContainer: ViewRepresentable {
     
     private func createWebView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
-        let webView = WKWebView(frame: .zero, configuration: config)
+        // Use a default frame to ensure internal layers initialize safely
+        let webView = WKWebView(frame: CGRect(x: 0, y: 0, width: 500, height: 600), configuration: config)
         webView.navigationDelegate = context.coordinator
         
         #if os(macOS)
         webView.autoresizingMask = [.width, .height]
         #endif
+        
+        // Load immediately to ensure content triggers
+        let request = URLRequest(url: url)
+        webView.load(request)
         
         return webView
     }

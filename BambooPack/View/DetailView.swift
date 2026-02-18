@@ -60,13 +60,12 @@ struct DetailView: View {
         }
         .sheet(isPresented: $showScraperSheet) {
             if let url = scraperURL {
-                WebViewContainer(url: url) { scrapedText in
+                SmartBrowserView(url: url) { scrapedText in
                     // Logic: Parse the text
                     if let result = SmartScraperLogic.parseTrackingStatus(from: scrapedText) {
                         print("Smart Scraper Found: \(result.status)")
                         
                         // Update Parcel
-                        // Note: WebViewContainer is on Main Thread (UI), so this is safe
                         viewModel.addTrackingEvent(
                             parcel: parcel,
                             description: result.description ?? "Status Updated via Smart Scraper",
@@ -78,7 +77,7 @@ struct DetailView: View {
                         showScraperSheet = false
                     }
                 }
-                .frame(minWidth: 500, minHeight: 600)
+                .frame(minWidth: 600, minHeight: 700)
             }
         }
     }
@@ -115,10 +114,10 @@ struct DetailView: View {
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                     } else {
-                        Text("Needs to be updated")
+                        Text("Update Needed")
                             .font(.title2)
                             .fontWeight(.bold)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.blue)
                         
                         Text("Pull or tap Refresh to check status")
                             .font(.subheadline)

@@ -51,7 +51,16 @@ struct ParcelRowView: View {
             // 3. HERO STATUS (Right Side)
             // Prioritizes "Time" or "Action" over raw dates
             VStack(alignment: .trailing, spacing: 2) {
-                if parcel.statusEnum == .delivered {
+                if needsUpdate {
+                    Text("Update Needed")
+                        .font(.callout)
+                        .fontWeight(.bold)
+                        .foregroundColor(.blue)
+                    
+                    Text("Tap to refresh")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                } else if parcel.statusEnum == .delivered {
                     Text("Delivered")
                         .font(.callout)
                         .fontWeight(.bold)
@@ -91,7 +100,13 @@ struct ParcelRowView: View {
     
     // MARK: - Computed Properties for Logic
     
+    var needsUpdate: Bool {
+        // If there's no tracking history, it needs an update
+        return parcel.trackingHistory == nil || parcel.trackingHistory?.isEmpty == true
+    }
+    
     var statusColor: Color {
+        if needsUpdate { return .blue }
         switch parcel.statusEnum {
         case .delivered: return .green
         case .shipped: return .blue
@@ -102,6 +117,7 @@ struct ParcelRowView: View {
     }
     
     var iconName: String {
+        if needsUpdate { return "arrow.clockwise" }
         // Business Logic: Differentiate direction visual
         if parcel.directionEnum == .outgoing {
             return "arrow.up.cube" // Outgoing icon
