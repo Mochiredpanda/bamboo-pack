@@ -33,6 +33,7 @@ struct DetailView: View {
                 
                 Section {
                     archiveButton
+                    deleteButton
                 }
             }
             .formStyle(.grouped)
@@ -179,6 +180,10 @@ struct DetailView: View {
                     // 3. Trigger "Update Needed" state by ensuring we have a timestamp but maybe no history yet
                     parcel.lastUpdated = Date()
                 }
+                
+                // Explicitly save to ensure the new tracking number is persisted immediately
+                // This fixes the issue where the browser might not see the new number if context wasn't saved.
+                viewModel.saveContext()
             }
         ))
     }
@@ -223,6 +228,27 @@ struct DetailView: View {
             )
         }
         .foregroundColor(parcel.archived ? .blue : .red)
+    }
+    
+    @State private var showDeleteConfirmation = false
+    
+    private var deleteButton: some View {
+        Button(role: .destructive) {
+            showDeleteConfirmation = true
+        } label: {
+            Label("Delete Parcel", systemImage: "trash")
+        }
+        .foregroundColor(.red)
+        .alert("Delete Parcel?", isPresented: $showDeleteConfirmation) {
+            Button("Delete", role: .destructive) {
+                viewModel.deleteParcel(parcel)
+                // Attempt to dismiss if pushed, though in SplitView selection clearing is handled by parent usually
+                // This prevents immediate crash effectively by assuming parent updates
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Are you sure you want to delete this parcel? This action cannot be undone.")
+        }
     }
 } 
 

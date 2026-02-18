@@ -81,10 +81,10 @@ struct SmartBrowserView: View {
         }
         .frame(minWidth: 600, minHeight: 700)
         .onAppear {
-            // Ensure model loads the CURRENT url, in case the view was recycled
-            if model.url != url {
-                model.url = url
-            }
+//            // Ensure model loads the CURRENT url, in case the view was recycled
+//            if model.URL != URL {
+//                model.URL = URL
+//            }
             model.load()
         }
     }

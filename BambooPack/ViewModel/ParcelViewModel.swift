@@ -155,7 +155,12 @@ class ParcelViewModel: ObservableObject {
         saveContext()
     }
     
-    private func saveContext() {
+    func deleteParcel(_ parcel: Parcel) {
+        viewContext.delete(parcel)
+        saveContext()
+    }
+    
+    func saveContext() {
         if viewContext.hasChanges {
             do {
                 try viewContext.save()

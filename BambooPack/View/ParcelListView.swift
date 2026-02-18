@@ -34,6 +34,24 @@ struct ParcelListView: View {
                 NavigationLink(value: parcel) {
                     ParcelRowView(parcel: parcel)
                 }
+                .contextMenu {
+                    Button {
+                        // Toggle Archive logic inline or via ViewModel if available
+                        // Since we are in a simple view without the full VM, we do it directly:
+                        parcel.archived.toggle()
+                        parcel.lastUpdated = Date()
+                        try? PersistenceController.shared.container.viewContext.save()
+                    } label: {
+                        Label(parcel.archived ? "Unarchive" : "Archive", systemImage: parcel.archived ? "arrow.uturn.backward.square" : "archivebox")
+                    }
+                    
+                    Button(role: .destructive) {
+                        PersistenceController.shared.container.viewContext.delete(parcel)
+                        try? PersistenceController.shared.container.viewContext.save()
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
             }
             .onDelete(perform: deleteParcels)
         }
