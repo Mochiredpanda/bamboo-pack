@@ -16,9 +16,8 @@ class WebViewModel: ObservableObject {
     init(url: URL) {
         self.url = url
         let config = WKWebViewConfiguration()
-        self.webView = WKWebView(frame: .zero, configuration: config)
-        // Ensure frame is set for layout
-        self.webView.frame = CGRect(x: 0, y: 0, width: 500, height: 600)
+        // Let AutoresizingMask handle the frame
+        self.webView = WKWebView(frame: CGRect(x: 0, y: 0, width: 800, height: 600), configuration: config)
     }
     
     func load() {
@@ -52,13 +51,14 @@ struct SmartBrowserView: View {
     var body: some View {
         NavigationStack {
             WebViewWrapper(model: model, onScrape: onScrape)
+                // Explicitly force the webview to fill the NavigationStack
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Done") {
                             dismiss()
                         }
                     }
-                    
                     ToolbarItem(placement: .primaryAction) {
                         HStack(spacing: 16) {
                             Button(action: { model.goBack() }) {
@@ -78,10 +78,13 @@ struct SmartBrowserView: View {
                     }
                 }
                 .navigationTitle(model.title.isEmpty ? "Browser" : model.title)
-                // .navigationBarTitleDisplayMode(.inline) // Unavailable on macOS
         }
         .frame(minWidth: 600, minHeight: 700)
         .onAppear {
+            // Ensure model loads the CURRENT url, in case the view was recycled
+            if model.url != url {
+                model.url = url
+            }
             model.load()
         }
     }

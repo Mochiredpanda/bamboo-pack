@@ -10,7 +10,24 @@ struct SmartScraperLogic {
     /// Generates a "Safe Search" URL that usually leads to the tracking page
     /// This avoids hardcoding broken carrier URLs.
     static func getTrackingURL(carrier: String, trackingNumber: String) -> URL? {
-        // Strategy: Use a search engine query which often shows a direct tracking card or link
+        let cleanCarrier = carrier.lowercased()
+        let cleanTracking = trackingNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // 1. Direct Carrier URLs
+        if cleanCarrier.contains("ups") {
+            return URL(string: "https://www.ups.com/track?tracknum=\(cleanTracking)")
+        }
+        if cleanCarrier.contains("usps") {
+            return URL(string: "https://tools.usps.com/go/TrackConfirmAction?tLabels=\(cleanTracking)")
+        }
+        if cleanCarrier.contains("fedex") {
+            return URL(string: "https://www.fedex.com/fedextrack/?trknbr=\(cleanTracking)")
+        }
+        if cleanCarrier.contains("dhl") {
+            return URL(string: "https://www.dhl.com/global-en/home/tracking/tracking-express.html?submit=1&tracking-id=\(cleanTracking)")
+        }
+        
+        // 2. Fallback: Search Engine
         // e.g., "UPS tracking 1Z999..."
         let query = "\(carrier) tracking \(trackingNumber)"
         let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""

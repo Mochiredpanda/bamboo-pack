@@ -157,7 +157,29 @@ struct DetailView: View {
     private var trackingNumberField: some View {
         TextField("Tracking Number", text: Binding(
             get: { parcel.trackingNumber ?? "" },
-            set: { parcel.trackingNumber = $0 }
+            set: { newValue in
+                let oldValue = parcel.trackingNumber ?? ""
+                parcel.trackingNumber = newValue
+                
+                // Auto-Workflow: If adding a tracking number to an untracked parcel
+                if oldValue.isEmpty && !newValue.isEmpty {
+                    // 1. Update Status to 'Shipped' (or 'In Transit') so it shows up as active
+                    if parcel.statusEnum == .ordered {
+                        parcel.statusEnum = .shipped
+                    }
+                    
+                    // 2. Auto-Detect Carrier if not already set
+                    if parcel.carrier == nil || parcel.carrier == "Auto" {
+                        let detected = CarrierDetector.detect(trackingNumber: newValue)
+                        if detected != .auto {
+                            parcel.carrier = detected.name
+                        }
+                    }
+                    
+                    // 3. Trigger "Update Needed" state by ensuring we have a timestamp but maybe no history yet
+                    parcel.lastUpdated = Date()
+                }
+            }
         ))
     }
     
