@@ -55,7 +55,19 @@ struct AddParcelSheet: View {
                         }
                     }
                 } header: {
-                    if isNotesExpanded { Text("Notes") }
+                    if isNotesExpanded {
+                        HStack {
+                            Text("Notes")
+                            Spacer()
+                            Button {
+                                withAnimation { isNotesExpanded = false }
+                            } label: {
+                                Text("Hide")
+                                    .font(.caption)
+                                    .fontWeight(.bold)
+                            }
+                        }
+                    }
                 }
             }
             .formStyle(.grouped)

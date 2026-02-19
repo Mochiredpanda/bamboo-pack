@@ -124,20 +124,21 @@ class ParcelViewModel: ObservableObject {
     ) {
         let newParcel = Parcel(context: viewContext)
         newParcel.id = UUID()
-        newParcel.title = title
-        newParcel.trackingNumber = trackingNumber.isEmpty ? nil : trackingNumber
-        newParcel.orderNumber = orderNumber
+        // Sanitize
+        newParcel.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        newParcel.trackingNumber = trackingNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : trackingNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+        newParcel.orderNumber = orderNumber?.trimmingCharacters(in: .whitespacesAndNewlines)
         newParcel.dateAdded = Date()
         newParcel.lastUpdated = Date()
         newParcel.directionEnum = direction
-        newParcel.notes = notes
+        newParcel.notes = notes?.trimmingCharacters(in: .whitespacesAndNewlines)
         newParcel.archived = false
         
         // New Fields
-        newParcel.recipient = recipient
-        newParcel.purpose = purpose
+        newParcel.recipient = recipient?.trimmingCharacters(in: .whitespacesAndNewlines)
+        newParcel.purpose = purpose?.trimmingCharacters(in: .whitespacesAndNewlines)
         newParcel.estimatedDeliveryDate = estimatedDeliveryDate
-        newParcel.productURL = productURL
+        newParcel.productURL = productURL?.trimmingCharacters(in: .whitespacesAndNewlines)
         
         // Initial Status Logic
         // If tracking number is present -> Pre-Shipment (or In Transit if we knew, but Pre-Shipment is safe default)
