@@ -30,30 +30,37 @@ struct ParcelListView: View {
     
     var body: some View {
         List(selection: $selection) {
-            ForEach(parcels) { parcel in
-                NavigationLink(value: parcel) {
-                    ParcelRowView(parcel: parcel)
-                }
-                .contextMenu {
-                    Button {
-                        // Toggle Archive logic inline or via ViewModel if available
-                        // Since we are in a simple view without the full VM, we do it directly:
-                        parcel.archived.toggle()
-                        parcel.lastUpdated = Date()
-                        try? PersistenceController.shared.container.viewContext.save()
-                    } label: {
-                        Label(parcel.archived ? "Unarchive" : "Archive", systemImage: parcel.archived ? "arrow.uturn.backward.square" : "archivebox")
-                    }
-                    
-                    Button(role: .destructive) {
-                        PersistenceController.shared.container.viewContext.delete(parcel)
-                        try? PersistenceController.shared.container.viewContext.save()
-                    } label: {
-                        Label("Delete", systemImage: "trash")
+            ForEach(ParcelStatus.StatusCategory.allCases, id: \.self) { category in
+                let categoryParcels = parcels.filter { $0.statusEnum.category == category }
+                
+                if !categoryParcels.isEmpty {
+                    Section(header: Text(category.rawValue)) {
+                        ForEach(categoryParcels) { parcel in
+                            NavigationLink(value: parcel) {
+                                ParcelRowView(parcel: parcel)
+                            }
+                            .contextMenu {
+                                Button {
+                                    parcel.archived.toggle()
+                                    parcel.lastUpdated = Date()
+                                    try? PersistenceController.shared.container.viewContext.save()
+                                } label: {
+                                    Label(parcel.archived ? "Unarchive" : "Archive", systemImage: parcel.archived ? "arrow.uturn.backward.square" : "archivebox")
+                                }
+                                
+                                Button(role: .destructive) {
+                                    deleteParcel(parcel)
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
+                        }
+                        .onDelete { indexSet in
+                            deleteParcels(offsets: indexSet, in: categoryParcels)
+                        }
                     }
                 }
             }
-            .onDelete(perform: deleteParcels)
         }
         .navigationTitle(category.rawValue)
         .toolbar {
@@ -68,16 +75,26 @@ struct ParcelListView: View {
         }
     }
     
-    private func deleteParcels(offsets: IndexSet) {
+    private func deleteParcels(offsets: IndexSet, in sourceArray: [Parcel]) {
         withAnimation {
-            offsets.map { parcels[$0] }.forEach(PersistenceController.shared.container.viewContext.delete)
-            
-            do {
-                try PersistenceController.shared.container.viewContext.save()
-            } catch {
-                let nsError = error as NSError
-                print("Unresolved error \(nsError), \(nsError.userInfo)")
-            }
+            offsets.map { sourceArray[$0] }.forEach(PersistenceController.shared.container.viewContext.delete)
+            saveContext()
+        }
+    }
+    
+    private func deleteParcel(_ parcel: Parcel) {
+        withAnimation {
+            PersistenceController.shared.container.viewContext.delete(parcel)
+            saveContext()
+        }
+    }
+    
+    private func saveContext() {
+        do {
+            try PersistenceController.shared.container.viewContext.save()
+        } catch {
+            let nsError = error as NSError
+            print("Unresolved error \(nsError), \(nsError.userInfo)")
         }
     }
 }

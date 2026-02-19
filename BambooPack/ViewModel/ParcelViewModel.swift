@@ -110,7 +110,17 @@ class ParcelViewModel: ObservableObject {
 
     // MARK: - Core Data Operations
 
-    func addParcel(title: String, trackingNumber: String, status: ParcelStatus, direction: ParcelDirection, orderNumber: String?, carrier: CarrierDetector.Carrier, notes: String?) {
+    func addParcel(
+        title: String,
+        trackingNumber: String,
+        direction: ParcelDirection,
+        orderNumber: String?,
+        carrier: CarrierDetector.Carrier,
+        notes: String?,
+        recipient: String? = nil,
+        purpose: String? = nil,
+        estimatedDeliveryDate: Date? = nil
+    ) {
         let newParcel = Parcel(context: viewContext)
         newParcel.id = UUID()
         newParcel.title = title
@@ -118,10 +128,23 @@ class ParcelViewModel: ObservableObject {
         newParcel.orderNumber = orderNumber
         newParcel.dateAdded = Date()
         newParcel.lastUpdated = Date()
-        newParcel.statusEnum = status
         newParcel.directionEnum = direction
         newParcel.notes = notes
         newParcel.archived = false
+        
+        // New Fields
+        newParcel.recipient = recipient
+        newParcel.purpose = purpose
+        newParcel.estimatedDeliveryDate = estimatedDeliveryDate
+        
+        // Initial Status Logic
+        // If tracking number is present -> Pre-Shipment (or In Transit if we knew, but Pre-Shipment is safe default)
+        // If empty -> Ordered (Incoming) or Draft (Outgoing)
+        if !trackingNumber.isEmpty {
+            newParcel.statusEnum = .preShipment
+        } else {
+            newParcel.statusEnum = direction == .incoming ? .ordered : .draft
+        }
         
         // Carrier Logic
         if carrier == .auto {
@@ -133,6 +156,7 @@ class ParcelViewModel: ObservableObject {
             }
         } else {
             newParcel.carrier = carrier.name
+            // If explicit carrier but no tracking, can still be ordered/draft
         }
         
         saveContext()

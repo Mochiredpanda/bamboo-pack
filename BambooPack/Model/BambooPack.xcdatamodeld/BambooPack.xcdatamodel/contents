@@ -13,6 +13,9 @@
         <attribute name="trackingNumber" optional="YES" attributeType="String"/>
         <attribute name="dateAdded" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="trackingHistory" optional="YES" attributeType="String"/>
+        <attribute name="estimatedDeliveryDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="recipient" optional="YES" attributeType="String"/>
+        <attribute name="purpose" optional="YES" attributeType="String"/>
     </entity>
     <elements>
         <element name="Parcel" positionX="0" positionY="0" width="128" height="210"/>

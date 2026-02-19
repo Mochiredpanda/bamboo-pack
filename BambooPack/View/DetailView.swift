@@ -24,6 +24,7 @@ struct DetailView: View {
                     trackingNumberField
                     carrierPicker
                     titleField
+                    extendedFields
                 }
                 
                 Section("Notes") {
@@ -160,13 +161,28 @@ struct DetailView: View {
             get: { parcel.trackingNumber ?? "" },
             set: { newValue in
                 let oldValue = parcel.trackingNumber ?? ""
+                
+                // If clearing a previously tracked parcel
+                if newValue.isEmpty && !oldValue.isEmpty {
+                    // If it was already in an active state (not just ordered/draft)
+                    // We suspend it instead of deleting the number entirely? 
+                    // Or we allow it but prompt validity? 
+                    // Requirement: "do not delete or unlink ... freeze it to 'suspended'"
+                    
+                    // Ideally we'd show an alert, but inside a Binding set that's hard.
+                    // Implementation: Allow clearing text field, but Logic sets status to Suspended if it WAS active
+                    if parcel.statusEnum != .ordered && parcel.statusEnum != .draft {
+                         parcel.statusEnum = .suspended
+                    }
+                }
+                
                 parcel.trackingNumber = newValue
                 
-                // Auto-Workflow: If adding a tracking number to an untracked parcel
+                // Auto-Workflow: If adding a tracking number to an untracked (or suspended) parcel
                 if oldValue.isEmpty && !newValue.isEmpty {
-                    // 1. Update Status to 'Shipped' (or 'In Transit') so it shows up as active
-                    if parcel.statusEnum == .ordered {
-                        parcel.statusEnum = .shipped
+                    // 1. Update Status to 'Pre-Shipment' (Active)
+                    if parcel.statusEnum == .ordered || parcel.statusEnum == .draft || parcel.statusEnum == .suspended {
+                        parcel.statusEnum = .preShipment
                     }
                     
                     // 2. Auto-Detect Carrier if not already set
@@ -177,12 +193,10 @@ struct DetailView: View {
                         }
                     }
                     
-                    // 3. Trigger "Update Needed" state by ensuring we have a timestamp but maybe no history yet
+                    // 3. Trigger "Update Needed"
                     parcel.lastUpdated = Date()
                 }
                 
-                // Explicitly save to ensure the new tracking number is persisted immediately
-                // This fixes the issue where the browser might not see the new number if context wasn't saved.
                 viewModel.saveContext()
             }
         ))
@@ -208,6 +222,27 @@ struct DetailView: View {
             get: { parcel.title ?? "" },
             set: { parcel.title = $0 }
         ))
+    }
+    
+    // New Fields
+    private var extendedFields: some View {
+        Group {
+            if parcel.directionEnum == .outgoing {
+                TextField("Recipient", text: Binding(
+                    get: { parcel.recipient ?? "" },
+                    set: { parcel.recipient = $0 }
+                ))
+                TextField("Purpose", text: Binding(
+                    get: { parcel.purpose ?? "" },
+                    set: { parcel.purpose = $0 }
+                ))
+            }
+            
+            DatePicker("Expected Delivery", selection: Binding(
+                get: { parcel.estimatedDeliveryDate ?? Date() },
+                set: { parcel.estimatedDeliveryDate = $0 }
+            ), displayedComponents: .date)
+        }
     }
     
     private var notesEditor: some View {
