@@ -119,7 +119,8 @@ class ParcelViewModel: ObservableObject {
         notes: String?,
         recipient: String? = nil,
         purpose: String? = nil,
-        estimatedDeliveryDate: Date? = nil
+        estimatedDeliveryDate: Date? = nil,
+        productURL: String? = nil
     ) {
         let newParcel = Parcel(context: viewContext)
         newParcel.id = UUID()
@@ -136,6 +137,7 @@ class ParcelViewModel: ObservableObject {
         newParcel.recipient = recipient
         newParcel.purpose = purpose
         newParcel.estimatedDeliveryDate = estimatedDeliveryDate
+        newParcel.productURL = productURL
         
         // Initial Status Logic
         // If tracking number is present -> Pre-Shipment (or In Transit if we knew, but Pre-Shipment is safe default)
