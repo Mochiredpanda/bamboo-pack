@@ -35,6 +35,25 @@ struct AddParcelSheet: View {
     var body: some View {
         NavigationStack {
             Form {
+                // MARK: - Smart Paste Header
+                Section {
+                    Button {
+                        handleSmartPaste()
+                    } label: {
+                        HStack {
+                            Image(systemName: "doc.on.clipboard")
+                            Text("Smart Paste from Clipboard")
+                            Spacer()
+                        }
+                        .padding(.vertical, 4)
+                        .contentShape(Rectangle()) // Makes the whole row clickable
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundColor(.blue)
+                } footer: {
+                    Text("Paste an email or text to auto-fill tracking details.")
+                }
+                
                 if direction == .incoming {
                     incomingFormContent
                 } else {
@@ -190,5 +209,47 @@ struct AddParcelSheet: View {
             productURL: productURL
         )
         dismiss()
+    }
+    
+    private func handleSmartPaste() {
+        // 1. Read from macOS Pasteboard
+        guard let clipboardText = NSPasteboard.general.string(forType: .string), !clipboardText.isEmpty else {
+            // Optional: Play a "bop" sound or show a toast if clipboard is empty
+            NSSound.beep()
+            return
+        }
+        
+        // 2. Parse the text
+        let parsedData = SmartPasteParser.parse(text: clipboardText)
+        
+        // 3. Apply to State
+        // We wrap in an animation so the UI gracefully updates as fields fill in
+        withAnimation {
+            if let trackNum = parsedData.trackingNumber {
+                self.trackingNumber = trackNum
+            }
+            
+            if let ordNum = parsedData.orderNumber {
+                self.orderNumber = ordNum
+            }
+            
+            if parsedData.carrier != .auto {
+                self.carrier = parsedData.carrier
+                self.showCarrierPicker = false
+            } else {
+                detectCarrier(for: trackingNumber)
+            }
+            
+            // Auto-generate a title if order number exists but title is empty
+            if title.isEmpty, let ordNum = parsedData.orderNumber {
+                self.title = "Order \(ordNum)"
+            }
+            
+            // Optional: Dump the raw pasted text into notes for context
+            if notes.isEmpty {
+                self.notes = "Pasted context:\n\(clipboardText.prefix(200))..." // Keep it short
+                self.isNotesExpanded = true
+            }
+        }
     }
 }
