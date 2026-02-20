@@ -76,8 +76,10 @@ struct DetailView: View {
                                     didUpdate = true
                                 }
                                 
-                                // Prevent redundant tracking events if status hasn't changed
-                                if parcel.statusEnum != result.status {
+                                let latestEvent = viewModel.getTrackingEvents(for: parcel).first
+                                
+                                // Prevent redundant tracking events if status and description haven't changed
+                                if parcel.statusEnum != result.status || latestEvent?.description != result.description {
                                     viewModel.addTrackingEvent(
                                         parcel: parcel,
                                         description: result.description ?? "Status Updated",
@@ -85,7 +87,14 @@ struct DetailView: View {
                                         status: result.status
                                     )
                                     didUpdate = true
+                                } else {
+                                    // Status is identical, just update the timestamp to show it was recently checked
+                                    viewModel.updateLatestTrackingEventTimestamp(for: parcel)
+                                    didUpdate = true
                                 }
+                                
+                                parcel.lastUpdated = Date()
+                                didUpdate = true
                                 
                                 if didUpdate {
                                     viewModel.saveContext()
@@ -125,8 +134,10 @@ struct DetailView: View {
                             didUpdate = true
                         }
                         
+                        let latestEvent = viewModel.getTrackingEvents(for: parcel).first
+                        
                         // Prevent redundant updates if status hasn't changed
-                        if parcel.statusEnum != result.status {
+                        if parcel.statusEnum != result.status || latestEvent?.description != result.description {
                             viewModel.addTrackingEvent(
                                 parcel: parcel,
                                 description: result.description ?? "Status Updated",
@@ -134,7 +145,13 @@ struct DetailView: View {
                                 status: result.status
                             )
                             didUpdate = true
+                        } else {
+                            viewModel.updateLatestTrackingEventTimestamp(for: parcel)
+                            didUpdate = true
                         }
+                        
+                        parcel.lastUpdated = Date()
+                        didUpdate = true
                         
                         // Auto-dismiss if ANY useful new data was extracted
                         if didUpdate {
@@ -152,6 +169,15 @@ struct DetailView: View {
     }
     
     // MARK: - Subviews
+    
+    var statusColor: Color {
+        switch parcel.statusEnum {
+        case .delivered: return .green
+        case .exception, .suspended: return .red
+        default: return .blue
+        }
+    }
+    
     // MARK: - Latest Tracking Card
     // separated from the main form
     private var latestTrackingCard: some View {
@@ -198,23 +224,36 @@ struct DetailView: View {
                 
                 Image(systemName: parcel.statusEnum.icon)
                     .font(.system(size: 34))
-                    .foregroundColor(.blue)
+                    .foregroundColor(statusColor)
             }
             
             Divider()
             
             // Replaced History Link with Expected Delivery readout
             HStack {
-                if let expectedDate = parcel.estimatedDeliveryDate {
-                     Text("Expected: \(expectedDate.formatted(date: .abbreviated, time: .omitted))")
-                         .fontWeight(.semibold)
+                if parcel.statusEnum == .delivered {
+                    if let deliveryDate = latestEvent?.timestamp {
+                        Text("Delivered at \(deliveryDate.formatted(date: .abbreviated, time: .shortened))")
+                            .fontWeight(.semibold)
+                            .foregroundColor(.green)
+                    } else {
+                        Text("Delivered")
+                            .fontWeight(.semibold)
+                            .foregroundColor(.green)
+                    }
                 } else {
-                     Text("Expected Date Unknown")
-                         .fontWeight(.regular)
+                    if let expectedDate = parcel.estimatedDeliveryDate {
+                         Text("Expected: \(expectedDate.formatted(date: .abbreviated, time: .omitted))")
+                             .fontWeight(.semibold)
+                    } else {
+                         Text("Expected Date Unknown")
+                             .fontWeight(.regular)
+                    }
                 }
                 Spacer()
             }
-            .foregroundColor(.blue)
+            // Apply blue color only if not delivered
+            .foregroundColor(parcel.statusEnum == .delivered ? .green : .blue)
             
             /*
             Button {

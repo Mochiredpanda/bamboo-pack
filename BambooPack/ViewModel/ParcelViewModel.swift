@@ -115,6 +115,22 @@ class ParcelViewModel: ObservableObject {
             print("Failed to save tracking event: \(error)")
         }
     }
+    
+    // Helper to update the timestamp of the latest event (e.g. when checking and getting identical status)
+    func updateLatestTrackingEventTimestamp(for parcel: Parcel) {
+        var currentEvents = getTrackingEvents(for: parcel)
+        guard !currentEvents.isEmpty else { return }
+        
+        currentEvents[0].timestamp = Date()
+        
+        if let encodedHistory = try? JSONEncoder().encode(currentEvents),
+           let historyString = String(data: encodedHistory, encoding: .utf8) {
+            parcel.trackingHistory = historyString
+        }
+        
+        parcel.lastUpdated = Date()
+        saveContext()
+    }
 
     // MARK: - Core Data Operations
 

@@ -4,7 +4,7 @@ import Foundation
 
 struct TrackingEvent: Codable, Identifiable {
     var id: UUID = UUID()
-    let timestamp: Date
+    var timestamp: Date
     let description: String
     let location: String?
     let status: ParcelStatus
