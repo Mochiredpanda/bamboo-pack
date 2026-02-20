@@ -7,9 +7,13 @@ struct DetailView: View {
     // State to control the Full History sheet
     @State private var showFullHistory = false
     
+    struct ScraperItem: Identifiable {
+        let id = UUID()
+        let url: URL
+    }
+    
     // Smart Scraper State
-    @State private var showScraperSheet = false
-    @State private var scraperURL: URL?
+    @State private var scraperItem: ScraperItem?
     
     var body: some View {
         VStack(spacing: 0) {
@@ -47,8 +51,7 @@ struct DetailView: View {
                        let carrier = parcel.carrier {
                         // Activate Smart Scraper
                         if let url = SmartScraperLogic.getTrackingURL(carrier: carrier, trackingNumber: tracking) {
-                            self.scraperURL = url
-                            self.showScraperSheet = true
+                            self.scraperItem = ScraperItem(url: url)
                         }
                     }
                 } label: {
@@ -60,34 +63,30 @@ struct DetailView: View {
         .sheet(isPresented: $showFullHistory) {
             TrackingHistoryView(parcel: parcel, viewModel: viewModel)
         }
-        .sheet(isPresented: $showScraperSheet) {
+        .sheet(item: $scraperItem) { item in
             Group {
-                if let url = scraperURL {
-                    SmartBrowserView(url: url) { scrapedText in
-                        // Execute parsing
-                        if let result = SmartScraperLogic.parseTrackingStatus(from: scrapedText) {
-                            
-                            // Prevent redundant updates if status hasn't changed
-                            guard parcel.statusEnum != result.status else { return }
-                            
-                            viewModel.addTrackingEvent(
-                                parcel: parcel,
-                                description: result.description ?? "Status Updated",
-                                location: nil,
-                                status: result.status
-                            )
-                            
-                            // Optional: Add a toast notification mechanism here 
-                            // before dismissing to inform the user it was successful.
-                            showScraperSheet = false
-                        }
-                        // If parsing fails, the sheet remains open, allowing the user 
-                        // to manually read the tracking history on the webpage.
+                SmartBrowserView(url: item.url) { scrapedText in
+                    // Execute parsing
+                    if let result = SmartScraperLogic.parseTrackingStatus(from: scrapedText) {
+                        
+                        // Prevent redundant updates if status hasn't changed
+                        guard parcel.statusEnum != result.status else { return }
+                        
+                        viewModel.addTrackingEvent(
+                            parcel: parcel,
+                            description: result.description ?? "Status Updated",
+                            location: nil,
+                            status: result.status
+                        )
+                        
+                        // Optional: Add a toast notification mechanism here 
+                        // before dismissing to inform the user it was successful.
+                        scraperItem = nil
                     }
-                    .id(url) // 🟢 Forces a fresh StateObject for every new URL
-                } else {
-                    ContentUnavailableView("Invalid Tracking URL", systemImage: "exclamationmark.triangle")
+                    // If parsing fails, the sheet remains open, allowing the user 
+                    // to manually read the tracking history on the webpage.
                 }
+                .id(item.url) // 🟢 Forces a fresh StateObject for every new URL
             }
             .frame(minWidth: 600, minHeight: 700)
         }

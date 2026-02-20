@@ -33,15 +33,21 @@ struct SmartScraperLogic {
             let captured = String(match.1).trimmingCharacters(in: .whitespaces)
             
             if captured.contains("delivered") { return ScrapedStatus(status: .delivered, description: "Delivered") }
-            if captured.contains("transit") || captured.contains("way") { return ScrapedStatus(status: .shipped, description: "In Transit") }
-            if captured.contains("out for delivery") { return ScrapedStatus(status: .shipped, description: "Out for Delivery") }
+            if captured.contains("transit") || captured.contains("way") { return ScrapedStatus(status: .inTransit, description: "In Transit") }
+            if captured.contains("out for delivery") { return ScrapedStatus(status: .outForDelivery, description: "Out for Delivery") }
             if captured.contains("exception") || captured.contains("delay") { return ScrapedStatus(status: .exception, description: "Exception/Delay") }
         }
         
         // STRICT EXACT PHRASE MATCHING (Fallback)
         // Must contain specific multi-word phrases that rarely appear in footers or ads.
+        
+        // UPS Specific
+        if cleanText.contains("your package is on the move") {
+            return ScrapedStatus(status: .inTransit, description: "In Transit")
+        }
+        
         if cleanText.contains("out for delivery today") || cleanText.contains("loaded on delivery vehicle") {
-            return ScrapedStatus(status: .shipped, description: "Out for Delivery")
+            return ScrapedStatus(status: .outForDelivery, description: "Out for Delivery")
         }
         
         if cleanText.contains("delivered, in/at mailbox") || cleanText.contains("delivered, front desk") {
