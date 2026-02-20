@@ -247,7 +247,7 @@ struct AddParcelSheet: View {
             
             // Optional: Dump the raw pasted text into notes for context
             if notes.isEmpty {
-                self.notes = "Pasted context:\n\(clipboardText.prefix(200))..." // Keep it short
+                self.notes = "From Pasteboard:\n\n\(clipboardText.prefix(200))..." // Keep it short
                 self.isNotesExpanded = true
             }
         }

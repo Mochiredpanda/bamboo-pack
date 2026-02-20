@@ -31,7 +31,17 @@ struct ParcelListView: View {
     var body: some View {
         List(selection: $selection) {
             ForEach(ParcelStatus.StatusCategory.allCases, id: \.self) { category in
-                let categoryParcels = parcels.filter { $0.statusEnum.category == category }
+                let categoryParcels: [Parcel] = {
+                    let filtered = parcels.filter { $0.statusEnum.category == category }
+                    if category == .onTheWay {
+                        return filtered.sorted {
+                            let d1 = $0.estimatedDeliveryDate ?? Date.distantFuture
+                            let d2 = $1.estimatedDeliveryDate ?? Date.distantFuture
+                            return d1 < d2
+                        }
+                    }
+                    return filtered
+                }()
                 
                 if !categoryParcels.isEmpty {
                     Section(header: Text(category.rawValue)) {

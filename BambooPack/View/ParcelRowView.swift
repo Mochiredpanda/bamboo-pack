@@ -87,11 +87,16 @@ struct ParcelRowView: View {
                         .fontWeight(.medium)
                         .foregroundColor(.blue)
                     
-                    // Mocking the "Time Remaining" logic for the UX demo
-                    // In a real app, replace this with `estimatedDeliveryDate` logic
-                    Text("Arriving Soon") 
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                    // Shows the real ETA extracted from the tracking page
+                    if let etaDate = parcel.estimatedDeliveryDate {
+                        Text("ETA: \(etaDate.formatted(date: .abbreviated, time: .omitted))")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("Arriving Soon") 
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
                 }
             }
         }
