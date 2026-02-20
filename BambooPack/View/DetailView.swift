@@ -68,20 +68,30 @@ struct DetailView: View {
                 SmartBrowserView(url: item.url) { scrapedText in
                     // Execute parsing
                     if let result = SmartScraperLogic.parseTrackingStatus(from: scrapedText) {
+                        var didUpdate = false
+                        
+                        // Update Expected Delivery if found and changed
+                        if let expected = result.expectedDelivery, parcel.estimatedDeliveryDate != expected {
+                            parcel.estimatedDeliveryDate = expected
+                            didUpdate = true
+                        }
                         
                         // Prevent redundant updates if status hasn't changed
-                        guard parcel.statusEnum != result.status else { return }
+                        if parcel.statusEnum != result.status {
+                            viewModel.addTrackingEvent(
+                                parcel: parcel,
+                                description: result.description ?? "Status Updated",
+                                location: nil,
+                                status: result.status
+                            )
+                            didUpdate = true
+                        }
                         
-                        viewModel.addTrackingEvent(
-                            parcel: parcel,
-                            description: result.description ?? "Status Updated",
-                            location: nil,
-                            status: result.status
-                        )
-                        
-                        // Optional: Add a toast notification mechanism here 
-                        // before dismissing to inform the user it was successful.
-                        scraperItem = nil
+                        // Auto-dismiss if ANY useful new data was extracted
+                        if didUpdate {
+                            viewModel.saveContext()
+                            scraperItem = nil
+                        }
                     }
                     // If parsing fails, the sheet remains open, allowing the user 
                     // to manually read the tracking history on the webpage.
@@ -144,6 +154,20 @@ struct DetailView: View {
             
             Divider()
             
+            // Replaced History Link with Expected Delivery readout
+            HStack {
+                if let expectedDate = parcel.estimatedDeliveryDate {
+                     Text("Expected: \(expectedDate.formatted(date: .abbreviated, time: .omitted))")
+                         .fontWeight(.semibold)
+                } else {
+                     Text("Expected Date Unknown")
+                         .fontWeight(.regular)
+                }
+                Spacer()
+            }
+            .foregroundColor(.blue)
+            
+            /*
             Button {
                 showFullHistory = true
             } label: {
@@ -158,6 +182,7 @@ struct DetailView: View {
             }
             .buttonStyle(.plain)
             .foregroundColor(.blue)
+            */
         }
         .padding(16)
         .background(Color(NSColor.controlBackgroundColor))
