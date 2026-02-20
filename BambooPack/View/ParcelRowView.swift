@@ -89,7 +89,8 @@ struct ParcelRowView: View {
                     
                     // Shows the real ETA extracted from the tracking page
                     if let etaDate = parcel.estimatedDeliveryDate {
-                        Text("ETA: \(etaDate.formatted(date: .abbreviated, time: .omitted))")
+                        // Text("ETA: \(etaDate.formatted(date: .abbreviated, time: .omitted))")
+                        Text("ETA: \(etaDate.formatted(.dateTime.month().day()))")
                             .font(.caption2)
                             .foregroundColor(.secondary)
                     } else {

@@ -271,10 +271,14 @@ struct DetailView: View {
                 ))
             }
             
-            DatePicker("Expected Delivery", selection: Binding(
-                get: { parcel.estimatedDeliveryDate ?? Date() },
-                set: { parcel.estimatedDeliveryDate = $0 }
-            ), displayedComponents: .date)
+            if let expectedDate = parcel.estimatedDeliveryDate {
+                HStack {
+                    Text("Expected Delivery")
+                    Spacer()
+                    Text(expectedDate.formatted(date: .abbreviated, time: .omitted))
+                        .foregroundColor(.secondary)
+                }
+            }
         }
     }
     
