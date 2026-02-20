@@ -61,26 +61,35 @@ struct DetailView: View {
             TrackingHistoryView(parcel: parcel, viewModel: viewModel)
         }
         .sheet(isPresented: $showScraperSheet) {
-            if let url = scraperURL {
-                SmartBrowserView(url: url) { scrapedText in
-                    // Logic: Parse the text
-                    if let result = SmartScraperLogic.parseTrackingStatus(from: scrapedText) {
-                        print("Smart Scraper Found: \(result.status)")
-                        
-                        // Update Parcel
-                        viewModel.addTrackingEvent(
-                            parcel: parcel,
-                            description: result.description ?? "Status Updated via Smart Scraper",
-                            location: nil,
-                            status: result.status
-                        )
-                        
-                        // Close Sheet on success
-                        showScraperSheet = false
+            Group {
+                if let url = scraperURL {
+                    SmartBrowserView(url: url) { scrapedText in
+                        // Execute parsing
+                        if let result = SmartScraperLogic.parseTrackingStatus(from: scrapedText) {
+                            
+                            // Prevent redundant updates if status hasn't changed
+                            guard parcel.statusEnum != result.status else { return }
+                            
+                            viewModel.addTrackingEvent(
+                                parcel: parcel,
+                                description: result.description ?? "Status Updated",
+                                location: nil,
+                                status: result.status
+                            )
+                            
+                            // Optional: Add a toast notification mechanism here 
+                            // before dismissing to inform the user it was successful.
+                            showScraperSheet = false
+                        }
+                        // If parsing fails, the sheet remains open, allowing the user 
+                        // to manually read the tracking history on the webpage.
                     }
+                    .id(url) // 🟢 Forces a fresh StateObject for every new URL
+                } else {
+                    ContentUnavailableView("Invalid Tracking URL", systemImage: "exclamationmark.triangle")
                 }
-                .frame(minWidth: 600, minHeight: 700)
             }
+            .frame(minWidth: 600, minHeight: 700)
         }
     }
     

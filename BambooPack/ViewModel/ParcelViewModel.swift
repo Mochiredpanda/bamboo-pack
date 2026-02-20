@@ -98,13 +98,21 @@ class ParcelViewModel: ObservableObject {
         // Let's prepend to match the sort order in UI
         currentEvents.insert(newEvent, at: 0)
         
-        // Encode and Save
+        // Encode
         if let encodedHistory = try? JSONEncoder().encode(currentEvents),
            let historyString = String(data: encodedHistory, encoding: .utf8) {
             parcel.trackingHistory = historyString
-            parcel.statusEnum = status
-            parcel.lastUpdated = Date()
-            saveContext()
+        }
+        
+        // 2. CRITICAL: Update the parent parcel's core properties
+        parcel.statusEnum = status // This moves it to the correct Section in ListView
+        parcel.lastUpdated = Date()     // This forces the ListView to sort it to the top
+        
+        // 3. CRITICAL: Save the context to notify @FetchRequest
+        do {
+            try viewContext.save()
+        } catch {
+            print("Failed to save tracking event: \(error)")
         }
     }
 

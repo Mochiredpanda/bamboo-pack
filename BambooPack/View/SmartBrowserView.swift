@@ -85,7 +85,9 @@ struct SmartBrowserView: View {
 //            if model.URL != URL {
 //                model.URL = URL
 //            }
-            model.load()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                model.load()
+            }
         }
     }
 }
