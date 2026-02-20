@@ -25,37 +25,57 @@ struct SmartScraperLogic {
     static func parseTrackingStatus(from text: String) -> ScrapedStatus? {
         let cleanText = text.lowercased()
         
-        // ANCHOR STRATEGY: Look for the word "Status" followed by a few words.
-        // regex: "status" or "status:", followed by up to 30 characters of a-z letters.
-        let statusPattern = /status\s*[:\-]?\s*([a-z\s]{3,30})/
+        // 1. EXTRACT THE "NOISE"
+        // If the text is massive, try to isolate the first 1000 characters
+        // Carriers usually put the status at the top of the DOM.
+        let searchArea = String(cleanText.prefix(1000))
         
-        if let match = try? statusPattern.firstMatch(in: cleanText) {
-            let captured = String(match.1).trimmingCharacters(in: .whitespaces)
-            
-            if captured.contains("delivered") { return ScrapedStatus(status: .delivered, description: "Delivered") }
-            if captured.contains("transit") || captured.contains("way") { return ScrapedStatus(status: .inTransit, description: "In Transit") }
-            if captured.contains("out for delivery") { return ScrapedStatus(status: .outForDelivery, description: "Out for Delivery") }
-            if captured.contains("exception") || captured.contains("delay") { return ScrapedStatus(status: .exception, description: "Exception/Delay") }
+        // 2. DEFINE SEMANTIC BUCKETS
+        // We look for signal words rather than exact sentences.
+        let deliveredSignals = ["delivered", "left at", "signed for", "front desk", "porch", "mailbox"]
+        let exceptionSignals = ["exception", "delay", "held", "customs", "action required", "delivery failed"]
+        let transitSignals = ["transit", "way", "departed", "arrived at", "out for delivery", "we have your package", "possession", "picked up", "on vehicle"]
+        let preShipmentSignals = ["label created", "information received", "awaiting item", "order processed"]
+        
+        // 3. HIERARCHICAL EVALUATION
+        // Check highest priority (final states) first to avoid false positives 
+        // if a page says "Label Created... Delivered" in its history table.
+        
+        // A. Delivered Check
+        if deliveredSignals.contains(where: searchArea.contains) {
+            // Find the specific trigger word for a better UI description
+            let match = deliveredSignals.first(where: searchArea.contains) ?? "delivered"
+            return ScrapedStatus(status: .delivered, description: match.capitalized)
         }
         
-        // STRICT EXACT PHRASE MATCHING (Fallback)
-        // Must contain specific multi-word phrases that rarely appear in footers or ads.
+        // B. Exception Check
+        if exceptionSignals.contains(where: searchArea.contains) {
+            return ScrapedStatus(status: .exception, description: "Attention Needed")
+        }
         
-        // UPS Specific
-        if cleanText.contains("your package is on the move") {
+        // C. Transit Check (Catches "We Have Your Package")
+        if transitSignals.contains(where: searchArea.contains) {
+            let match = transitSignals.first(where: searchArea.contains) ?? "in transit"
+            
+            // Refine description if it's specifically out for delivery
+            if match == "out for delivery" || match == "on vehicle" {
+                return ScrapedStatus(status: .outForDelivery, description: "Out for Delivery")
+            }
             return ScrapedStatus(status: .inTransit, description: "In Transit")
         }
         
-        if cleanText.contains("out for delivery today") || cleanText.contains("loaded on delivery vehicle") {
-            return ScrapedStatus(status: .outForDelivery, description: "Out for Delivery")
-        }
-        
-        if cleanText.contains("delivered, in/at mailbox") || cleanText.contains("delivered, front desk") {
-            return ScrapedStatus(status: .delivered, description: "Delivered")
-        }
-        
-        if cleanText.contains("shipping label created, usps awaiting item") {
+        // D. Pre-Shipment Check
+        if preShipmentSignals.contains(where: searchArea.contains) {
             return ScrapedStatus(status: .ordered, description: "Label Created")
+        }
+        
+        // 4. FALLBACK: DYNAMIC EXTRACTION (The "Anchor" method)
+        // If marketing teams use a completely new word, we try to find the standard "Status: XYZ" format.
+        let statusPattern = /status\s*[:\-]?\s*([a-z\s]{3,20})/
+        if let match = try? statusPattern.firstMatch(in: searchArea) {
+            let captured = String(match.1).trimmingCharacters(in: .whitespaces)
+            // Default to shipped if we find a status but don't recognize the words
+            return ScrapedStatus(status: .shipped, description: captured.capitalized)
         }
         
         return nil
