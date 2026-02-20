@@ -100,7 +100,7 @@ struct AddParcelSheet: View {
                         .fontWeight(.bold)
                 }
             }
-            .onChange(of: trackingNumber) { newValue in
+            .onChange(of: trackingNumber) { _, newValue in
                 detectCarrier(for: newValue)
             }
         }
