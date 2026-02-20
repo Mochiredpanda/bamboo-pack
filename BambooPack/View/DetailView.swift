@@ -7,6 +7,10 @@ struct DetailView: View {
     // State to control the Full History sheet
     @State private var showFullHistory = false
     
+    // Background Scraper UI State
+    @State private var isRefreshing = false
+    @State private var showToast = false
+    
     struct ScraperItem: Identifiable {
         let id = UUID()
         let url: URL
@@ -43,20 +47,65 @@ struct DetailView: View {
             }
             .formStyle(.grouped)
         }
+        .toast(isShowing: $showToast, message: "Status Up-to-Date")
         .navigationTitle(parcel.title ?? "Details")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     if let tracking = parcel.trackingNumber, !tracking.isEmpty,
                        let carrier = parcel.carrier {
-                        // Activate Smart Scraper
+                        // Optimistic Background Scraper Path
                         if let url = SmartScraperLogic.getTrackingURL(carrier: carrier, trackingNumber: tracking) {
-                            self.scraperItem = ScraperItem(url: url)
+                            self.isRefreshing = true
+                            
+                            BackgroundScraper.shared.scrape(url: url) { scrapedText in
+                                self.isRefreshing = false
+                                
+                                guard let text = scrapedText,
+                                      let result = SmartScraperLogic.parseTrackingStatus(from: text) else {
+                                    // Failsafe: Background scrape failed or timed out. Show the visible sheet.
+                                    self.scraperItem = ScraperItem(url: url)
+                                    return
+                                }
+                                
+                                var didUpdate = false
+                                
+                                // Update Expected Delivery if found and changed
+                                if let expected = result.expectedDelivery, parcel.estimatedDeliveryDate != expected {
+                                    parcel.estimatedDeliveryDate = expected
+                                    didUpdate = true
+                                }
+                                
+                                // Prevent redundant tracking events if status hasn't changed
+                                if parcel.statusEnum != result.status {
+                                    viewModel.addTrackingEvent(
+                                        parcel: parcel,
+                                        description: result.description ?? "Status Updated",
+                                        location: nil,
+                                        status: result.status
+                                    )
+                                    didUpdate = true
+                                }
+                                
+                                if didUpdate {
+                                    viewModel.saveContext()
+                                }
+                                
+                                // Show success indicator regardless of whether the status changed
+                                self.showToast = true
+                            }
                         }
                     }
                 } label: {
-                    Label("Refresh", systemImage: "arrow.clockwise")
+                    if isRefreshing {
+                        ProgressView()
+                            .controlSize(.small)
+                            .padding(.horizontal, 4)
+                    } else {
+                        Label("Refresh", systemImage: "arrow.clockwise")
+                    }
                 }
+                .disabled(isRefreshing)
             }
         }
         .frame(minWidth: 400, minHeight: 500)
