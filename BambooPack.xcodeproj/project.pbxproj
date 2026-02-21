@@ -399,7 +399,7 @@
 				CODE_SIGN_ENTITLEMENTS = BambooPack.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 0.1.1;
 				DEVELOPMENT_TEAM = 5KNBWF4J7N;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -414,7 +414,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = "0.9.0-beta";
+				MARKETING_VERSION = "0.1.1-debug";
 				PRODUCT_BUNDLE_IDENTIFIER = com.mofumochi.BambooPack;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -438,7 +438,7 @@
 				CODE_SIGN_ENTITLEMENTS = BambooPack.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 0.1.1;
 				DEVELOPMENT_TEAM = 5KNBWF4J7N;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -453,7 +453,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = "0.9.0-beta";
+				MARKETING_VERSION = "0.1.1-debug";
 				PRODUCT_BUNDLE_IDENTIFIER = com.mofumochi.BambooPack;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;

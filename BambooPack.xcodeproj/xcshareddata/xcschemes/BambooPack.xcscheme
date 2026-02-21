@@ -76,6 +76,13 @@
             ReferencedContainer = "container:BambooPack.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
+      <AdditionalOptions>
+         <AdditionalOption
+            key = "APP_DISTRIBUTOR_ID_OVERRIDE"
+            value = "com.apple.TestFlight"
+            isEnabled = "YES">
+         </AdditionalOption>
+      </AdditionalOptions>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"

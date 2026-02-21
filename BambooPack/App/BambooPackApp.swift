@@ -14,6 +14,7 @@ struct BambooPackApp: App {
                 Button("About BambooPack") {
                     NSApplication.shared
                         .orderFrontStandardAboutPanel(
+                            // Dict overriding default Info.plist at runtime
                             options: [
                                 .applicationName: "BambooPack",
                                 .credits: NSAttributedString(
@@ -23,7 +24,7 @@ struct BambooPackApp: App {
                                         .foregroundColor: NSColor.secondaryLabelColor
                                     ]
                                 ),
-                                .version: "0.9.0-beta",
+                                .version: "Animal Friends Edition", // Overriding default CFBundleVersion
                             ]
                         )
                 }
