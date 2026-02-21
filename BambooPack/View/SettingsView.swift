@@ -30,9 +30,50 @@ struct SettingsView: View {
                     HStack {
                         Text("Version")
                         Spacer()
-                        Text("1.0.0")
+                        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
+                        Text("\(version) (Beta)")
                             .foregroundColor(.secondary)
                     }
+                    
+                    Link(destination: URL(string: "https://github.com/Mochiredpanda/bamboo-pack")!) {
+                        HStack {
+                            Image("GitHubIcon")
+                                .resizable()
+                                .renderingMode(.template)
+                                .foregroundColor(.primary)
+                                .frame(width: 16, height: 16)
+                            Text("GitHub Repository")
+                            Spacer()
+                            Image(systemName: "gear")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .foregroundColor(.primary)
+                    
+                    Button {
+                        if let url = URL(string: "mailto:mochiredpanda0@gmail.com?subject=Bamboo%20Pack%20Feedback") {
+                            NSWorkspace.shared.open(url)
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: "envelope")
+                            Text("Send Feedback")
+                            Spacer()
+                            Image(systemName: "arrow.up.right")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundColor(.primary)
+                    
+                    HStack {
+                        Image(systemName: "heart.fill")
+                            .foregroundColor(.red)
+                        Text("Made by Mochi Red Panda & Friends")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.top, 4)
                 }
             }
             .formStyle(.grouped)
