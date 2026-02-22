@@ -111,4 +111,48 @@ class TrackingmoreService {
         
         return results
     }
+    
+    // MARK: - Validation
+    static func validateKey(apiKey: String) async throws {
+        guard !apiKey.isEmpty else {
+            throw TrackingError.apiError("API Key is empty.")
+        }
+        
+        guard let url = URL(string: "https://api.trackingmore.com/v4/couriers/all") else {
+            throw TrackingError.invalidURL
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(apiKey, forHTTPHeaderField: "Tracking-Api-Key")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
+            throw TrackingError.networkError(NSError(domain: "Network Error", code: 0))
+        }
+        
+        if let jsonObject = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let meta = jsonObject["meta"] as? [String: Any],
+           let code = meta["code"] as? Int {
+            
+            switch code {
+            case 200:
+                return // Valid
+            case 4011:
+                throw TrackingError.apiError("API Key is invalid or missing.")
+            case 4031:
+                throw TrackingError.apiError("Access Denied: Plan expired or query limit reached.")
+            case 4291:
+                throw TrackingError.apiError("Rate limit exceeded. Try again later.")
+            default:
+                if code != 200 {
+                    let message = meta["message"] as? String ?? "Unknown Meta Code \(code)"
+                    throw TrackingError.apiError(message)
+                }
+            }
+        } else {
+             throw TrackingError.apiError("Invalid response format.")
+        }
+    }
 }

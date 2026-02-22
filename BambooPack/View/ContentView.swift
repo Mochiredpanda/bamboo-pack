@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @State private var selectedCategory: SidebarCategory? = .incoming
     @State private var selectedParcel: Parcel?
+    @State private var showingSettings = false
     
     var body: some View {
         NavigationSplitView {
@@ -22,5 +23,16 @@ struct ContentView: View {
             }
         }
         .environment(\.managedObjectContext, PersistenceController.shared.container.viewContext)
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
+                Button(action: { showingSettings = true }) {
+                    Image(systemName: "gear")
+                }
+                .help("Settings")
+            }
+        }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView()
+        }
     }
 }

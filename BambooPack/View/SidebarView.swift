@@ -19,8 +19,6 @@ enum SidebarCategory: String, CaseIterable, Identifiable {
 struct SidebarView: View {
     @Binding var selection: SidebarCategory?
     
-    @State private var showingSettings = false
-    
     var body: some View {
         List(selection: $selection) {
             ForEach(SidebarCategory.allCases) { category in
@@ -30,15 +28,5 @@ struct SidebarView: View {
         }
         .listStyle(SidebarListStyle())
         .navigationTitle("Bamboo Pack")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button(action: { showingSettings = true }) {
-                    Label("Settings", systemImage: "gear")
-                }
-            }
-        }
-        .sheet(isPresented: $showingSettings) {
-             SettingsView()
-        }
     }
 }

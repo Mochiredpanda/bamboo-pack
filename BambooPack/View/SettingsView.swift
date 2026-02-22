@@ -5,6 +5,15 @@ struct SettingsView: View {
     @State private var apiKey: String = ""
     @Environment(\.dismiss) var dismiss
     
+    enum ValidationStatus: Equatable {
+        case idle
+        case validating
+        case valid(APIProvider)
+        case invalid(String)
+    }
+    
+    @State private var validationStatus: ValidationStatus = .idle
+    
     var body: some View {
         NavigationStack {
             Form {
@@ -20,22 +29,60 @@ struct SettingsView: View {
                     }
                     .onChange(of: selectedProvider) { newValue in
                         loadApiKey(for: newValue)
+                        Task { await validateCurrentKey() }
                     }
                     
-                    SecureField("API Key", text: $apiKey)
-                        .textFieldStyle(.roundedBorder)
-                        .onChange(of: apiKey) { newValue in
-                            saveApiKey(newValue, for: selectedProvider)
+                    HStack {
+                        SecureField("API Key", text: $apiKey)
+                            .textFieldStyle(.roundedBorder)
+                            .onChange(of: apiKey) { _ in
+                                if validationStatus != .idle {
+                                    validationStatus = .idle
+                                }
+                            }
+                            .onSubmit {
+                                saveApiKey(apiKey, for: selectedProvider)
+                                Task { await validateCurrentKey() }
+                            }
+                        
+                        Button {
+                            saveApiKey(apiKey, for: selectedProvider)
+                            Task { await validateCurrentKey() }
+                        } label: {
+                            Image(systemName: "arrow.right.circle.fill")
+                                .foregroundColor(apiKey.isEmpty ? .secondary : .accentColor)
+                                .imageScale(.large)
                         }
+                        .buttonStyle(.plain)
+                        .disabled(apiKey.isEmpty)
+                    }
                     
                     if apiKey.isEmpty {
-                        Text("Using Mock Data (Development Mode)")
+                        Text("Please enter an API Key to validate.")
                             .foregroundColor(.orange)
                             .font(.caption)
                     } else {
-                        Text("Using Real API (\(selectedProvider.rawValue))")
-                            .foregroundColor(.green)
-                            .font(.caption)
+                        switch validationStatus {
+                        case .idle:
+                            Text("Confirm to validate...")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
+                        case .validating:
+                            HStack {
+                                ProgressView().controlSize(.mini)
+                                Text("Validating...")
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
+                            }
+                        case .valid(let provider):
+                            Text("API Validated (\(provider.rawValue))")
+                                .foregroundColor(.green)
+                                .font(.caption)
+                        case .invalid(let errorMessage):
+                            Text("Validation Failed: \(errorMessage)")
+                                .foregroundColor(.red)
+                                .font(.caption)
+                        }
                     }
                 }
                 
@@ -101,6 +148,7 @@ struct SettingsView: View {
             .frame(minWidth: 300, minHeight: 200)
             .onAppear {
                 loadApiKey(for: selectedProvider)
+                Task { await validateCurrentKey() }
             }
         }
     }
@@ -119,6 +167,35 @@ struct SettingsView: View {
             KeychainHelper.shared.delete(service: "com.bamboopack.api", account: provider.keychainAccount)
         } else {
             KeychainHelper.shared.save(key, service: "com.bamboopack.api", account: provider.keychainAccount)
+        }
+    }
+    
+    @MainActor
+    private func validateCurrentKey() async {
+        guard !apiKey.isEmpty else {
+            validationStatus = .idle
+            return
+        }
+        
+        validationStatus = .validating
+        do {
+            switch selectedProvider {
+            case .trackingmore:
+                try await TrackingmoreService.validateKey(apiKey: apiKey)
+                validationStatus = .valid(selectedProvider)
+            default:
+                // Other providers not implemented validation yet
+                validationStatus = .valid(selectedProvider)
+            }
+        } catch let error as TrackingError {
+            switch error {
+            case .apiError(let msg):
+                validationStatus = .invalid(msg)
+            default:
+                validationStatus = .invalid(error.localizedDescription)
+            }
+        } catch {
+            validationStatus = .invalid(error.localizedDescription)
         }
     }
 }
