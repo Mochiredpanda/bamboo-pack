@@ -55,25 +55,46 @@ struct SmartBrowserView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Done") {
+                        Button("Close") {
+                            // On macOS, dismiss() will close the secondary Window.
                             dismiss()
                         }
                     }
+                    ToolbarItem(placement: .principal) {
+                        TextField("URL", text: .constant(model.url.absoluteString))
+                            .textFieldStyle(.roundedBorder)
+                            .frame(minWidth: 300, maxWidth: 500)
+                            // Prevent editing but allow selecting and copying
+                            .disabled(true)
+                    }
                     ToolbarItem(placement: .primaryAction) {
-                        HStack(spacing: 16) {
+                        HStack(spacing: 8) {
                             Button(action: { model.goBack() }) {
                                 Image(systemName: "chevron.left")
                             }
                             .disabled(!model.canGoBack)
+                            .help("Go Back")
                             
                             Button(action: { model.goForward() }) {
                                 Image(systemName: "chevron.right")
                             }
                             .disabled(!model.canGoForward)
+                            .help("Go Forward")
                             
                             Button(action: { model.reload() }) {
                                 Image(systemName: "arrow.clockwise")
                             }
+                            .help("Reload")
+                            
+                            Divider()
+                                .frame(height: 16)
+                            
+                            Button(action: {
+                                NSWorkspace.shared.open(model.url)
+                            }) {
+                                Image(systemName: "safari")
+                            }
+                            .help("Open in System Browser")
                         }
                     }
                 }
@@ -154,4 +175,9 @@ struct WebViewWrapper: NSViewRepresentable {
             }
         }
     }
+}
+
+extension Notification.Name {
+    static let didScrapeTrackingData = Notification.Name("didScrapeTrackingData")
+    static let closeSmartBrowser = Notification.Name("closeSmartBrowser")
 }

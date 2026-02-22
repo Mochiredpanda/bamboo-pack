@@ -9,27 +9,25 @@ struct BambooPackApp: App {
             ContentView()
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
         }
-        .commands {
-            CommandGroup(replacing: .appInfo) {
-                Button("About BambooPack") {
-                    NSApplication.shared
-                        .orderFrontStandardAboutPanel(
-                            // Dict overriding default Info.plist at runtime
-                            options: [
-                                .applicationName: "BambooPack",
-                                .credits: NSAttributedString(
-                                    string: "Copyright © 2026, RedPanda Mochi\nLicensed under the MIT license. See LICENSE file.",
-                                    attributes: [
-                                        .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
-                                        .foregroundColor: NSColor.secondaryLabelColor
-                                    ]
-                                ),
-                                .version: "Animal Friends Edition", // Overriding default CFBundleVersion
-                            ]
-                        )
+        
+        WindowGroup("Tracking Browser", id: "SmartBrowser", for: URL.self) { $url in
+            if let url = url {
+                SmartBrowserView(url: url) { scrapedText in
+                    // Note: Consider replacing this NotificationCenter broadcast 
+                    // with a strongly typed dependency (e.g., a shared View Model)
+                    NotificationCenter.default.post(
+                        name: .didScrapeTrackingData,
+                        object: nil,
+                        userInfo: ["url": url, "text": scrapedText]
+                    )
                 }
-                .keyboardShortcut(",")
+            } else {
+                Text("No URL Provided")
             }
+        }
+        .windowResizability(.contentSize)
+        .commands {
+            BambooPackCommands()
         }
     }
 }

@@ -3,6 +3,7 @@ import SwiftUI
 struct DetailView: View {
     @ObservedObject var parcel: Parcel
     @StateObject private var viewModel = ParcelViewModel()
+    @Environment(\.openWindow) private var openWindow
     
     // State to control the Full History sheet
     @State private var showFullHistory = false
@@ -63,8 +64,8 @@ struct DetailView: View {
                                 
                                 guard let text = scrapedText,
                                       let result = SmartScraperLogic.parseTrackingStatus(from: text) else {
-                                    // Failsafe: Background scrape failed or timed out. Show the visible sheet.
-                                    self.scraperItem = ScraperItem(url: url)
+                                    // Failsafe: Background scrape failed or timed out. Show the visible window.
+                                    openWindow(id: "SmartBrowser", value: url)
                                     return
                                 }
                                 
@@ -121,50 +122,48 @@ struct DetailView: View {
         .sheet(isPresented: $showFullHistory) {
             TrackingHistoryView(parcel: parcel, viewModel: viewModel)
         }
-        .sheet(item: $scraperItem) { item in
-            Group {
-                SmartBrowserView(url: item.url) { scrapedText in
-                    // Execute parsing
-                    if let result = SmartScraperLogic.parseTrackingStatus(from: scrapedText) {
-                        var didUpdate = false
-                        
-                        // Update Expected Delivery if found and changed
-                        if let expected = result.expectedDelivery, parcel.estimatedDeliveryDate != expected {
-                            parcel.estimatedDeliveryDate = expected
-                            didUpdate = true
-                        }
-                        
-                        let latestEvent = viewModel.getTrackingEvents(for: parcel).first
-                        
-                        // Prevent redundant updates if status hasn't changed
-                        if parcel.statusEnum != result.status || latestEvent?.description != result.description {
-                            viewModel.addTrackingEvent(
-                                parcel: parcel,
-                                description: result.description ?? "Status Updated",
-                                location: nil,
-                                status: result.status
-                            )
-                            didUpdate = true
-                        } else {
-                            viewModel.updateLatestTrackingEventTimestamp(for: parcel)
-                            didUpdate = true
-                        }
-                        
-                        parcel.lastUpdated = Date()
+        .onReceive(NotificationCenter.default.publisher(for: .didScrapeTrackingData)) { notification in
+            guard let userInfo = notification.userInfo,
+                  let scrapedUrl = userInfo["url"] as? URL,
+                  let scrapedText = userInfo["text"] as? String else { return }
+            
+            if let tracking = parcel.trackingNumber, !tracking.isEmpty,
+               let carrier = parcel.carrier,
+               let expectedUrl = SmartScraperLogic.getTrackingURL(carrier: carrier, trackingNumber: tracking),
+               scrapedUrl == expectedUrl {
+                
+                if let result = SmartScraperLogic.parseTrackingStatus(from: scrapedText) {
+                    var didUpdate = false
+                    
+                    if let expected = result.expectedDelivery, parcel.estimatedDeliveryDate != expected {
+                        parcel.estimatedDeliveryDate = expected
                         didUpdate = true
-                        
-                        // Auto-dismiss if ANY useful new data was extracted
-                        if didUpdate {
-                            viewModel.saveContext()
-                            scraperItem = nil
-                        }
                     }
-                    // If parsing fails, the sheet remains open, allowing the user 
-                    // to manually read the tracking history on the webpage.
+                    
+                    let latestEvent = viewModel.getTrackingEvents(for: parcel).first
+                    
+                    if parcel.statusEnum != result.status || latestEvent?.description != result.description {
+                        viewModel.addTrackingEvent(
+                            parcel: parcel,
+                            description: result.description ?? "Status Updated",
+                            location: nil,
+                            status: result.status
+                        )
+                        didUpdate = true
+                    } else {
+                        viewModel.updateLatestTrackingEventTimestamp(for: parcel)
+                        didUpdate = true
+                    }
+                    
+                    parcel.lastUpdated = Date()
+                    didUpdate = true
+                    
+                    if didUpdate {
+                        viewModel.saveContext()
+                        NotificationCenter.default.post(name: .closeSmartBrowser, object: nil, userInfo: ["url": scrapedUrl])
+                    }
                 }
-                .id(item.url) // 🟢 Forces a fresh StateObject for every new URL
             }
-            .frame(minWidth: 600, minHeight: 700)
         }
     }
     
