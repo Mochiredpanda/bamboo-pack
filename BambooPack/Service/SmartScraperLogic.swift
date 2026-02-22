@@ -9,7 +9,6 @@ struct ScrapedStatus {
 struct SmartScraperLogic {
     
     static func getTrackingURL(carrier: String, trackingNumber: String) -> URL? {
-        // ... (Keep existing URL generation) ...
         let cleanCarrier = carrier.lowercased()
         let cleanTracking = trackingNumber.trimmingCharacters(in: .whitespacesAndNewlines)
         
