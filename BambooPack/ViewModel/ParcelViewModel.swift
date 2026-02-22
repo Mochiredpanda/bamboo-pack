@@ -81,57 +81,6 @@ class ParcelViewModel: ObservableObject {
         }
     }
     
-    // Helper to append a single event (used by Smart Scraper)
-    func addTrackingEvent(parcel: Parcel, description: String, location: String?, status: ParcelStatus) {
-        var currentEvents = getTrackingEvents(for: parcel)
-        
-        // Create new event
-        let newEvent = TrackingEvent(
-            id: UUID(),
-            timestamp: Date(),
-            description: description,
-            location: location,
-            status: status
-        )
-        
-        // Prepend (newest first) or Append? Usually newest first for history.
-        // Let's prepend to match the sort order in UI
-        currentEvents.insert(newEvent, at: 0)
-        
-        // Encode
-        if let encodedHistory = try? JSONEncoder().encode(currentEvents),
-           let historyString = String(data: encodedHistory, encoding: .utf8) {
-            parcel.trackingHistory = historyString
-        }
-        
-        // 2. CRITICAL: Update the parent parcel's core properties
-        parcel.statusEnum = status // This moves it to the correct Section in ListView
-        parcel.lastUpdated = Date()     // This forces the ListView to sort it to the top
-        
-        // 3. CRITICAL: Save the context to notify @FetchRequest
-        do {
-            try viewContext.save()
-        } catch {
-            print("Failed to save tracking event: \(error)")
-        }
-    }
-    
-    // Helper to update the timestamp of the latest event (e.g. when checking and getting identical status)
-    func updateLatestTrackingEventTimestamp(for parcel: Parcel) {
-        var currentEvents = getTrackingEvents(for: parcel)
-        guard !currentEvents.isEmpty else { return }
-        
-        currentEvents[0].timestamp = Date()
-        
-        if let encodedHistory = try? JSONEncoder().encode(currentEvents),
-           let historyString = String(data: encodedHistory, encoding: .utf8) {
-            parcel.trackingHistory = historyString
-        }
-        
-        parcel.lastUpdated = Date()
-        saveContext()
-    }
-
     // MARK: - Core Data Operations
 
     func addParcel(

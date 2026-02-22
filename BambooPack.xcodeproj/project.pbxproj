@@ -24,7 +24,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		CC54F955B6E44E598C180366 /* TrackingUpdateService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TrackingUpdateService.swift; sourceTree = "<group>"; };		1A284DF82F42ED5800DD8E0D /* BambooPack.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BambooPack.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1A284DF82F42ED5800DD8E0D /* BambooPack.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BambooPack.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1A284E0A2F42ED5B00DD8E0D /* BambooPackTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BambooPackTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1A284E142F42ED5B00DD8E0D /* BambooPackUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BambooPackUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
