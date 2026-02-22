@@ -45,28 +45,67 @@ class TrackingmoreService {
                 let (data, response) = try await urlSession.data(for: singleRequest)
                 if let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) {
                     
-                    // Trackingmore returns an ARRAY inside data even for a single query.
-                    // E.g.: {"meta":{...}, "data":[{"id":"...", ...}]}
-                    // We need to rewrap it as a single object for our adapter: {"meta":{...}, "data":{"id":"...", ...}}
-                    
+                    // Parse raw JSON to evaluate specific Trackingmore Meta codes
                     if let jsonObject = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                        let meta = jsonObject["meta"] as? [String: Any],
-                       let dataArray = jsonObject["data"] as? [[String: Any]],
-                       let firstData = dataArray.first {
+                       let code = meta["code"] as? Int {
                         
-                        let rewrappedObj: [String: Any] = [
-                            "meta": meta,
-                            "data": firstData
-                        ]
+                        // Handle strict Trackingmore-specific Meta Codes
+                        switch code {
+                        case 200:
+                            // Success
+                            break
+                        case 4011:
+                            throw TrackingError.apiError("API Key is invalid or missing.")
+                        case 4031:
+                            throw TrackingError.apiError("Access Denied: Plan expired or query limit reached.")
+                        case 4101:
+                            throw TrackingError.apiError("Tracking number already exists (creation conflict).")
+                        case 4102:
+                            throw TrackingError.apiError("Tracking number does not exist.")
+                        case 4103:
+                            throw TrackingError.apiError("Exceeded maximum quantity (max 40 shipments per call).")
+                        case 4110:
+                            throw TrackingError.apiError("The tracking_number value is invalid.")
+                        case 4291:
+                            throw TrackingError.apiError("Rate limit exceeded. Try again later.")
+                        case 5000:
+                            throw TrackingError.apiError("Internal Server Error on TrackingMore's side.")
+                        default:
+                            if code != 200 {
+                                let message = meta["message"] as? String ?? "Unknown Meta Code \(code)"
+                                throw TrackingError.apiError("Trackingmore Error: \(message)")
+                            }
+                        }
                         
-                        if let rewrappedData = try? JSONSerialization.data(withJSONObject: rewrappedObj) {
-                            let result = try adapter.adapt(data: rewrappedData, for: parcel)
-                            results.append(result)
+                        // Extract array safely for the adapter
+                        if let dataArray = jsonObject["data"] as? [[String: Any]],
+                           let firstData = dataArray.first {
+                            
+                            // To support additional tracking fields seamlessly, we can append them on Creation POST API calls.
+                            // e.g., if we were doing a POST to /v4/trackings/create:
+                            // "tracking_postal_code": parcel.recipientZipCode
+                            // "destination_country": parcel.destinationCountryCode
+                            // "customer_email": parcel.recipientEmail
+                            
+                            let rewrappedObj: [String: Any] = [
+                                "meta": meta,
+                                "data": firstData
+                            ]
+                            
+                            if let rewrappedData = try? JSONSerialization.data(withJSONObject: rewrappedObj) {
+                                let result = try adapter.adapt(data: rewrappedData, for: parcel)
+                                results.append(result)
+                            }
                         }
                     }
                 }
             } catch {
                 print("Failed to sync parcel \(number): \(error.localizedDescription)")
+                // Optionally Rethrow if it's a critical auth error
+                if let trackError = error as? TrackingError, case .apiError(let msg) = trackError, msg.contains("API Key is invalid") {
+                    throw error
+                }
             }
         }
         

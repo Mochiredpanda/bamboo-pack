@@ -80,21 +80,21 @@ struct TrackingmoreAdapter: TrackingAPIAdapter {
     }
     
     /// Maps Trackingmore's string status ("pending", "notfound", "transit", "pickup", "delivered", "undelivered", "exception", "expired")
-    /// to our global ParcelStatus.
+    /// to our global ParcelStatus. Also supports AWB specific statuses ("active", "completed").
     private func mapStatus(from trackingMoreStatus: String?) -> ParcelStatus {
         guard let statusStr = trackingMoreStatus?.lowercased() else { return .ordered }
         
         switch statusStr {
         case "pending", "notfound":
             return .preShipment
-        case "transit":
+        case "transit", "active":
             return .inTransit
         case "pickup", "outfordelivery":
             return .outForDelivery
-        case "delivered":
+        case "delivered", "completed":
             return .delivered
         case "undelivered", "exception", "expired":
-            return .exception
+            return .exception // Alert the user to issues or deep expiration
         default:
             return .inTransit // Safe fallback
         }
