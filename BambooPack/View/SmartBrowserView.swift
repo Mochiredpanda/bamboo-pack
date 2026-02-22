@@ -110,6 +110,11 @@ struct SmartBrowserView: View {
                 model.load()
             }
         }
+        .onReceive(TrackingUpdateService.shared.closeSmartBrowser) { url in
+            if url == model.url {
+                dismiss()
+            }
+        }
     }
 }
 
@@ -175,9 +180,4 @@ struct WebViewWrapper: NSViewRepresentable {
             }
         }
     }
-}
-
-extension Notification.Name {
-    static let didScrapeTrackingData = Notification.Name("didScrapeTrackingData")
-    static let closeSmartBrowser = Notification.Name("closeSmartBrowser")
 }

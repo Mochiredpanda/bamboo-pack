@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 struct DetailView: View {
     @ObservedObject var parcel: Parcel
@@ -122,10 +123,9 @@ struct DetailView: View {
         .sheet(isPresented: $showFullHistory) {
             TrackingHistoryView(parcel: parcel, viewModel: viewModel)
         }
-        .onReceive(NotificationCenter.default.publisher(for: .didScrapeTrackingData)) { notification in
-            guard let userInfo = notification.userInfo,
-                  let scrapedUrl = userInfo["url"] as? URL,
-                  let scrapedText = userInfo["text"] as? String else { return }
+        .onReceive(TrackingUpdateService.shared.didScrapeData) { payload in
+            let scrapedUrl = payload.url
+            let scrapedText = payload.text
             
             if let tracking = parcel.trackingNumber, !tracking.isEmpty,
                let carrier = parcel.carrier,
@@ -160,7 +160,7 @@ struct DetailView: View {
                     
                     if didUpdate {
                         viewModel.saveContext()
-                        NotificationCenter.default.post(name: .closeSmartBrowser, object: nil, userInfo: ["url": scrapedUrl])
+                        TrackingUpdateService.shared.closeSmartBrowser.send(scrapedUrl)
                     }
                 }
             }

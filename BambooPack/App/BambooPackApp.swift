@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 @main
 struct BambooPackApp: App {
@@ -15,11 +16,7 @@ struct BambooPackApp: App {
                 SmartBrowserView(url: url) { scrapedText in
                     // Note: Consider replacing this NotificationCenter broadcast 
                     // with a strongly typed dependency (e.g., a shared View Model)
-                    NotificationCenter.default.post(
-                        name: .didScrapeTrackingData,
-                        object: nil,
-                        userInfo: ["url": url, "text": scrapedText]
-                    )
+                    TrackingUpdateService.shared.didScrapeData.send((url: url, text: scrapedText))
                 }
             } else {
                 Text("No URL Provided")
