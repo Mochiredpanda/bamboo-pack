@@ -1,26 +1,39 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @AppStorage("tracking_api_key") private var apiKey: String = ""
+    @AppStorage("selected_api_provider") private var selectedProvider: APIProvider = .trackingmore
+    @State private var apiKey: String = ""
     @Environment(\.dismiss) var dismiss
     
     var body: some View {
         NavigationStack {
             Form {
                 Section("Tracking API") {
-                    Text("Bamboo Pack supports real-time tracking via 17TRACK API (or compatible).")
+                    Text("Select your preferred API provider and securely store your API key.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
+                    Picker("Provider", selection: $selectedProvider) {
+                        ForEach(APIProvider.allCases) { provider in
+                            Text(provider.rawValue).tag(provider)
+                        }
+                    }
+                    .onChange(of: selectedProvider) { newValue in
+                        loadApiKey(for: newValue)
+                    }
+                    
                     SecureField("API Key", text: $apiKey)
                         .textFieldStyle(.roundedBorder)
+                        .onChange(of: apiKey) { newValue in
+                            saveApiKey(newValue, for: selectedProvider)
+                        }
                     
                     if apiKey.isEmpty {
                         Text("Using Mock Data (Development Mode)")
                             .foregroundColor(.orange)
                             .font(.caption)
                     } else {
-                        Text("Using Real API")
+                        Text("Using Real API (\(selectedProvider.rawValue))")
                             .foregroundColor(.green)
                             .font(.caption)
                     }
@@ -86,6 +99,26 @@ struct SettingsView: View {
                 }
             }
             .frame(minWidth: 300, minHeight: 200)
+            .onAppear {
+                loadApiKey(for: selectedProvider)
+            }
+        }
+    }
+    
+    private func loadApiKey(for provider: APIProvider) {
+        let keyString: String? = KeychainHelper.shared.read(service: "com.bamboopack.api", account: provider.keychainAccount)
+        if let key = keyString {
+            apiKey = key
+        } else {
+            apiKey = ""
+        }
+    }
+    
+    private func saveApiKey(_ key: String, for provider: APIProvider) {
+        if key.isEmpty {
+            KeychainHelper.shared.delete(service: "com.bamboopack.api", account: provider.keychainAccount)
+        } else {
+            KeychainHelper.shared.save(key, service: "com.bamboopack.api", account: provider.keychainAccount)
         }
     }
 }

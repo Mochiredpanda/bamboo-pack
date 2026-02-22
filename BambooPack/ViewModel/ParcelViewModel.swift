@@ -9,58 +9,43 @@ class ParcelViewModel: ObservableObject {
     
     @Published var isLoading = false
     
-    // Published properties can be used if we want to manually manage lists, 
-    // but typically we use @FetchRequest in Views. 
-    // This ViewModel will focus on Logic and CRUD actions.
-    
-    // MARK: - Tracking Service Integration
-    
-    private let trackingService: TrackingService
-    
-    init(service: TrackingService = MockTrackingService()) {
-        self.trackingService = service
-    }
+    // MARK: - Batch Sync (New Workflow)
     
     @MainActor
-    func refreshTracking(for parcel: Parcel) async {
-        guard let trackingNumber = parcel.trackingNumber, !trackingNumber.isEmpty,
-              let carrier = parcel.carrier else {
-            return
-        }
-        
+    func syncAllActiveParcels() async {
         isLoading = true
         
+        // 1. Fetch Active Parcels
+        let request: NSFetchRequest<Parcel> = Parcel.fetchRequest()
+        // Simple heuristic: not delivered, not archived, not exception
+        request.predicate = NSPredicate(format: "archived == NO AND statusEnum_raw != %@ AND statusEnum_raw != %@", 
+                                        ParcelStatus.delivered.rawValue, 
+                                        ParcelStatus.exception.rawValue)
+        
         do {
-            // Check if we should use Real Service based on settings
-            // For MVP, we can toggle this or default to Mock if no key
-            // Ideally, we'd inject the correct service instance at init time.
-            // For this demo, let's just stick with the injected service (Mock by default)
-            // or switch to Real if a key exists:
+            let activeParcels = try viewContext.fetch(request)
             
-            let serviceToUse: TrackingService
-            if let apiKey = UserDefaults.standard.string(forKey: "tracking_api_key"), !apiKey.isEmpty {
-                 serviceToUse = RealTrackingService()
-            } else {
-                 serviceToUse = MockTrackingService()
-            }
+            // 2. Execute tracking sync
+            let service = TrackingmoreService()
+            let synchronizedResults = try await service.syncActiveParcels(activeParcels)
             
-            let info = try await serviceToUse.fetchTrackingInfo(carrier: carrier, trackingNumber: trackingNumber)
-            
-            // Update Core Data
-            parcel.statusEnum = info.status
-            parcel.lastUpdated = Date()
-            
-            // Serialize History
-            if let encodedHistory = try? JSONEncoder().encode(info.events),
-               let historyString = String(data: encodedHistory, encoding: .utf8) {
-                parcel.trackingHistory = historyString
+            // 3. Update Core Data from Normalized Models
+            for (normalizedInfo, timeline) in synchronizedResults {
+                guard let parcelToUpdate = activeParcels.first(where: { $0.id == normalizedInfo.entryId }) else { continue }
+                
+                parcelToUpdate.statusEnum = normalizedInfo.status
+                parcelToUpdate.lastUpdated = Date()
+                
+                if let encodedHistory = try? JSONEncoder().encode(timeline),
+                   let historyString = String(data: encodedHistory, encoding: .utf8) {
+                    parcelToUpdate.trackingHistory = historyString
+                }
             }
             
             saveContext()
             
         } catch {
-            print("Tracking Error: \(error.localizedDescription)")
-            // Optionally set error state
+            print("Batch Sync Error: \(error.localizedDescription)")
         }
         
         isLoading = false

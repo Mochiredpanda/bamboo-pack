@@ -48,7 +48,7 @@ struct DetailView: View {
                 Button {
                     Task {
                         isRefreshing = true
-                        await viewModel.refreshTracking(for: parcel)
+                        await viewModel.syncAllActiveParcels()
                         isRefreshing = false
                         showToast = true
                     }
