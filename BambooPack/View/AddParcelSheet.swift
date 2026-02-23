@@ -112,8 +112,6 @@ struct AddParcelSheet: View {
     private var incomingFormContent: some View {
         Group {
             Section {
-                TextField("Package Name (Optional)", text: $title)
-                
                 VStack(alignment: .leading, spacing: 4) {
                     TextField("Tracking Number", text: $trackingNumber)
                     if trackingNumber.isEmpty {
@@ -122,6 +120,8 @@ struct AddParcelSheet: View {
                             .foregroundColor(.secondary)
                     }
                 }
+                
+                TextField("Package Name (Optional)", text: $title)
                 
                 // Smart Carrier: Only show if detection fails AND tracking is present
                 if showCarrierPicker {

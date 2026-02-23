@@ -110,8 +110,33 @@ struct DetailView: View {
                         }
                         .font(.subheadline)
                         .foregroundColor(.secondary)
+                    } else if let errorMsg = viewModel.syncError {
+                        Text("Update Failed")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.red)
+                        
+                        Text(errorMsg)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .lineLimit(2)
+                    } else if parcel.statusEnum == .ordered || parcel.statusEnum == .draft {
+                        Text(parcel.statusEnum == .ordered ? "Order Placed" : "Draft Created")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.blue)
+                        
+                        if parcel.trackingNumber?.isEmpty == false {
+                            Text("Awaiting trackable shipment")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        } else {
+                            Text("No tracking number yet")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
                     } else {
-                        Text("Update Needed")
+                        Text("Tracking Not Available")
                             .font(.title2)
                             .fontWeight(.bold)
                             .foregroundColor(.blue)
@@ -247,26 +272,36 @@ struct DetailView: View {
     }
     
     // New Fields
+    @ViewBuilder
     private var extendedFields: some View {
-        Group {
-            if parcel.directionEnum == .outgoing {
-                TextField("Recipient", text: Binding(
-                    get: { parcel.recipient ?? "" },
-                    set: { parcel.recipient = $0 }
-                ))
-                TextField("Purpose", text: Binding(
-                    get: { parcel.purpose ?? "" },
-                    set: { parcel.purpose = $0 }
-                ))
-            }
-            
-            if let expectedDate = parcel.estimatedDeliveryDate {
-                HStack {
-                    Text("Expected Delivery")
-                    Spacer()
-                    Text(expectedDate.formatted(date: .abbreviated, time: .omitted))
-                        .foregroundColor(.secondary)
-                }
+        TextField("Order Number", text: Binding(
+            get: { parcel.orderNumber ?? "" },
+            set: { parcel.orderNumber = $0 }
+        ))
+        
+        TextField("Product URL", text: Binding(
+            get: { parcel.productURL ?? "" },
+            set: { parcel.productURL = $0 }
+        ))
+        // removed iOS-only `.keyboardType` and `.autocapitalization`
+        
+        if parcel.directionEnum == .outgoing {
+            TextField("Recipient", text: Binding(
+                get: { parcel.recipient ?? "" },
+                set: { parcel.recipient = $0 }
+            ))
+            TextField("Purpose", text: Binding(
+                get: { parcel.purpose ?? "" },
+                set: { parcel.purpose = $0 }
+            ))
+        }
+        
+        if let expectedDate = parcel.estimatedDeliveryDate {
+            HStack {
+                Text("Expected Delivery")
+                Spacer()
+                Text(expectedDate.formatted(date: .abbreviated, time: .omitted))
+                    .foregroundColor(.secondary)
             }
         }
     }

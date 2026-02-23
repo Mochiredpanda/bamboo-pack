@@ -9,6 +9,7 @@ class ParcelViewModel: ObservableObject {
     private let viewContext = PersistenceController.shared.container.viewContext
     
     @Published var isLoading = false
+    @Published var syncError: String?
     
     // MARK: - Batch Sync (New Workflow)
     
@@ -70,6 +71,7 @@ class ParcelViewModel: ObservableObject {
     @MainActor
     func syncParcel(_ parcel: Parcel) async {
         isLoading = true
+        syncError = nil
         
         do {
             let service = TrackingmoreService()
@@ -92,7 +94,7 @@ class ParcelViewModel: ObservableObject {
             }
         } catch {
             print("Sync Parcel Error: \(error.localizedDescription)")
-            // TODO: In a real app we might want to expose this error via an alert Publisher
+            syncError = error.localizedDescription
         }
         
         isLoading = false
