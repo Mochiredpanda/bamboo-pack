@@ -2,6 +2,7 @@ import Foundation
 import CoreData
 import SwiftUI
 import Combine
+import os
 
 class ParcelViewModel: ObservableObject {
     
@@ -52,18 +53,49 @@ class ParcelViewModel: ObservableObject {
     }
     
     // Helper to decode history for View consumption
-    func getTrackingEvents(for parcel: Parcel) -> [TrackingEvent] {
+    func getTrackingEvents(for parcel: Parcel) -> [TrackingTimelineEvent] {
         guard let historyString = parcel.trackingHistory,
               let data = historyString.data(using: .utf8) else {
             return []
         }
         
         do {
-            return try JSONDecoder().decode([TrackingEvent].self, from: data)
+            return try JSONDecoder().decode([TrackingTimelineEvent].self, from: data)
         } catch {
             print("Failed to decode history: \(error)")
             return []
         }
+    }
+    
+    @MainActor
+    func syncParcel(_ parcel: Parcel) async {
+        isLoading = true
+        
+        do {
+            let service = TrackingmoreService()
+            // We can reuse the batch sync method by passing a single-element array
+            let synchronizedResults = try await service.syncActiveParcels([parcel])
+            
+            if let firstResult = synchronizedResults.first {
+                let normalizedInfo = firstResult.0
+                let timeline = firstResult.1
+                
+                parcel.statusEnum = normalizedInfo.status
+                parcel.lastUpdated = Date()
+                
+                if let encodedHistory = try? JSONEncoder().encode(timeline),
+                   let historyString = String(data: encodedHistory, encoding: .utf8) {
+                    parcel.trackingHistory = historyString
+                }
+                
+                saveContext()
+            }
+        } catch {
+            print("Sync Parcel Error: \(error.localizedDescription)")
+            // TODO: In a real app we might want to expose this error via an alert Publisher
+        }
+        
+        isLoading = false
     }
     
     // MARK: - Core Data Operations

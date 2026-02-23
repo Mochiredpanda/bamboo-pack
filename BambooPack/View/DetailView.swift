@@ -48,7 +48,7 @@ struct DetailView: View {
                 Button {
                     Task {
                         isRefreshing = true
-                        await viewModel.syncAllActiveParcels()
+                        await viewModel.syncParcel(parcel)
                         isRefreshing = false
                         showToast = true
                     }
@@ -157,7 +157,6 @@ struct DetailView: View {
             // Apply blue color only if not delivered
             .foregroundColor(parcel.statusEnum == .delivered ? .green : .blue)
             
-            /*
             Button {
                 showFullHistory = true
             } label: {
@@ -172,7 +171,7 @@ struct DetailView: View {
             }
             .buttonStyle(.plain)
             .foregroundColor(.blue)
-            */
+            .padding(.top, 4)
         }
         .padding(16)
         .background(Color(NSColor.controlBackgroundColor))
@@ -315,7 +314,7 @@ struct DetailView: View {
 } 
 
 // MARK: - Subview: Tracking History
-// A simple view to show the full list when the button is clicked
+// A view to show the full timeline when the button is clicked
 struct TrackingHistoryView: View {
     let parcel: Parcel
     @ObservedObject var viewModel: ParcelViewModel
@@ -328,32 +327,93 @@ struct TrackingHistoryView: View {
                 if events.isEmpty {
                     ContentUnavailableView("Needs to be updated", systemImage: "arrow.clockwise", description: Text("Pull or tap Refresh to check status."))
                 } else {
-                    ForEach(events) { event in
-                        VStack(alignment: .leading) {
-                            Text(event.description)
-                                .font(.headline)
-                            
-                            HStack {
-                                if let location = event.location {
-                                    Text(location)
-                                }
-                                Text("•")
-                                Text(event.timestamp.formatted(date: .abbreviated, time: .shortened))
-                            }
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                    Section {
+                        ForEach(Array(events.enumerated()), id: \.element.id) { index, event in
+                            TrackingTimelineRow(
+                                event: event,
+                                isFirst: index == 0,
+                                isLast: index == events.count - 1
+                            )
                         }
-                        .padding(.vertical, 4)
                     }
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
                 }
             }
+            .listStyle(.plain)
             .navigationTitle("Tracking History")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
             }
-            .frame(minWidth: 350, minHeight: 400)
+            .frame(minWidth: 400, minHeight: 500)
         }
+    }
+}
+
+struct TrackingTimelineRow: View {
+    let event: TrackingTimelineEvent
+    let isFirst: Bool
+    let isLast: Bool
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 16) {
+            // Timeline graphics column
+            VStack(spacing: 0) {
+                // Top line
+                Rectangle()
+                    .fill(isFirst ? Color.clear : Color.secondary.opacity(0.3))
+                    .frame(width: 2, height: 20)
+                
+                // Timeline dot
+                Circle()
+                    .fill(isFirst ? Color.blue : (isLast ? Color.secondary : Color.blue.opacity(0.5)))
+                    .frame(width: 12, height: 12)
+                    // Optional inner dot for latest
+                    .overlay(
+                        Circle()
+                            .fill(Color(NSColor.controlBackgroundColor))
+                            .frame(width: 6, height: 6)
+                            .opacity(isFirst ? 1 : 0)
+                    )
+                
+                // Bottom line
+                Rectangle()
+                    .fill(isLast ? Color.clear : Color.secondary.opacity(0.3))
+                    .frame(width: 2)
+            }
+            
+            // Content column
+            VStack(alignment: .leading, spacing: 4) {
+                Text(event.description)
+                    .font(.headline)
+                    .foregroundColor(isFirst ? .primary : .secondary)
+                
+                if let subStatus = event.subStatus, !subStatus.isEmpty {
+                     Text(subStatus.capitalized)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
+                HStack(spacing: 6) {
+                    if let location = event.location, !location.isEmpty {
+                        Text(location)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                        Text("•")
+                    }
+                    Text(event.timestamp.formatted(date: .abbreviated, time: .shortened))
+                }
+                .font(.caption)
+                .foregroundColor(.secondary)
+            }
+            .padding(.vertical, 8)
+            .padding(.bottom, isLast ? 8 : 0)
+            
+            Spacer()
+        }
+        .padding(.horizontal)
     }
 }

@@ -13,7 +13,7 @@ struct BambooPackCommands: Commands {
         NSApplication.shared.orderFrontStandardAboutPanel(
             options: [
                 .applicationName: "BambooPack",
-                .version: "Animal Friends Edition",
+                .version: "Animal Friends UX Test",
                 .credits: generateCreditsString()
             ]
         )
