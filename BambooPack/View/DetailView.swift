@@ -12,6 +12,7 @@ struct DetailView: View {
     // Tracking Refresh UI State
     @State private var isRefreshing = false
     @State private var showToast = false
+    @State private var showQuotaAlert = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -42,6 +43,11 @@ struct DetailView: View {
             .formStyle(.grouped)
         }
         .toast(isShowing: $showToast, message: "Status Up-to-Date")
+        .alert("API Quota Reached", isPresented: $showQuotaAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(viewModel.syncError ?? "You have reached your Trackingmore API request limit.")
+        }
         .navigationTitle(parcel.title ?? "Details")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -50,7 +56,12 @@ struct DetailView: View {
                         isRefreshing = true
                         await viewModel.syncParcel(parcel)
                         isRefreshing = false
-                        showToast = true
+                        
+                        if let error = viewModel.syncError, error.contains("quota limitation") || error.contains("Plan expired") {
+                            showQuotaAlert = true
+                        } else {
+                            showToast = true
+                        }
                     }
                 } label: {
                     if isRefreshing {

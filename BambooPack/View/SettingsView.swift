@@ -13,6 +13,7 @@ struct SettingsView: View {
     }
     
     @State private var validationStatus: ValidationStatus = .idle
+    @State private var isEditingApiKey: Bool = false
     
     var body: some View {
         NavigationStack {
@@ -32,29 +33,58 @@ struct SettingsView: View {
                         Task { await validateCurrentKey() }
                     }
                     
-                    HStack {
-                        SecureField("API Key", text: $apiKey)
-                            .textFieldStyle(.roundedBorder)
-                            .onChange(of: apiKey) {
-                                if validationStatus != .idle {
-                                    validationStatus = .idle
+                    if isEditingApiKey || apiKey.isEmpty {
+                        HStack {
+                            SecureField("API Key", text: $apiKey)
+                                .textFieldStyle(.roundedBorder)
+                                .onChange(of: apiKey) {
+                                    if validationStatus != .idle {
+                                        validationStatus = .idle
+                                    }
+                                }
+                                .onSubmit {
+                                    saveApiKey(apiKey, for: selectedProvider)
+                                    Task {
+                                        await validateCurrentKey()
+                                        if case .valid = validationStatus {
+                                            isEditingApiKey = false
+                                        }
+                                    }
+                                }
+                            
+                            Button("Save") {
+                                saveApiKey(apiKey, for: selectedProvider)
+                                Task {
+                                    await validateCurrentKey()
+                                    if case .valid = validationStatus {
+                                        isEditingApiKey = false
+                                    }
                                 }
                             }
-                            .onSubmit {
-                                saveApiKey(apiKey, for: selectedProvider)
-                                Task { await validateCurrentKey() }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(apiKey.isEmpty)
+                            
+                            if !apiKey.isEmpty {
+                                Button("Cancel") {
+                                    loadApiKey(for: selectedProvider)
+                                    isEditingApiKey = false
+                                    Task { await validateCurrentKey() }
+                                }
+                                .buttonStyle(.bordered)
                             }
-                        
-                        Button {
-                            saveApiKey(apiKey, for: selectedProvider)
-                            Task { await validateCurrentKey() }
-                        } label: {
-                            Image(systemName: "arrow.right.circle.fill")
-                                .foregroundColor(apiKey.isEmpty ? .secondary : .accentColor)
-                                .imageScale(.large)
                         }
-                        .buttonStyle(.plain)
-                        .disabled(apiKey.isEmpty)
+                    } else {
+                        HStack {
+                            SecureField("API Key", text: .constant(apiKey))
+                                .textFieldStyle(.roundedBorder)
+                                .disabled(true)
+                            
+                            Button("Edit") {
+                                isEditingApiKey = true
+                                validationStatus = .idle
+                            }
+                            .buttonStyle(.bordered)
+                        }
                     }
                     
                     if apiKey.isEmpty {
@@ -64,9 +94,11 @@ struct SettingsView: View {
                     } else {
                         switch validationStatus {
                         case .idle:
-                            Text("Confirm to validate...")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
+                            if isEditingApiKey {
+                                Text("Click Save to validate and lock your key.")
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
+                            }
                         case .validating:
                             HStack {
                                 ProgressView().controlSize(.mini)
@@ -163,10 +195,11 @@ struct SettingsView: View {
     }
     
     private func saveApiKey(_ key: String, for provider: APIProvider) {
-        if key.isEmpty {
+        let trimmedKey = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedKey.isEmpty {
             KeychainHelper.shared.delete(service: "com.bamboopack.api", account: provider.keychainAccount)
         } else {
-            KeychainHelper.shared.save(key, service: "com.bamboopack.api", account: provider.keychainAccount)
+            KeychainHelper.shared.save(trimmedKey, service: "com.bamboopack.api", account: provider.keychainAccount)
         }
     }
     

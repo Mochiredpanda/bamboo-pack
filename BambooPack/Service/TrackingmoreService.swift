@@ -61,6 +61,8 @@ class TrackingmoreService {
                             throw TrackingError.apiError("API Key is invalid or missing.")
                         case 4031:
                             throw TrackingError.apiError("Access Denied: Plan expired or query limit reached.")
+                        case 4190:
+                            throw TrackingError.apiError("You are reaching the maximum quota limitation, please upgrade your current plan.")
                         case 4101:
                             throw TrackingError.apiError("Tracking number already exists (creation conflict).")
                         case 4102:
@@ -132,8 +134,10 @@ class TrackingmoreService {
             } catch {
                 print("Failed to sync parcel \(number): \(error.localizedDescription)")
                 // Optionally Rethrow if it's a critical auth error
-                if let trackError = error as? TrackingError, case .apiError(let msg) = trackError, msg.contains("API Key is invalid") {
-                    throw error
+                if let trackError = error as? TrackingError, case .apiError(let msg) = trackError {
+                    if msg.contains("API Key is invalid") || msg.contains("quota limitation") || msg.contains("Plan expired") {
+                        throw error
+                    }
                 }
             }
         }
@@ -216,6 +220,12 @@ class TrackingmoreService {
         if let jsonObject = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
            let meta = jsonObject["meta"] as? [String: Any],
            let code = meta["code"] as? Int {
+            if code == 4190 {
+                throw TrackingError.apiError("You are reaching the maximum quota limitation, please upgrade your current plan.")
+            }
+            if code == 4031 {
+                throw TrackingError.apiError("Access Denied: Plan expired or query limit reached.")
+            }
             return code == 200
         }
         
