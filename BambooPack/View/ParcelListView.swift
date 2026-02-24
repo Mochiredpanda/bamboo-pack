@@ -3,12 +3,12 @@ import CoreData
 
 struct ParcelListView: View {
     var category: SidebarCategory
-    @Binding var selection: Parcel?
+    @Binding var selection: Set<Parcel>
     
     @FetchRequest var parcels: FetchedResults<Parcel>
     @State private var showingAddSheet = false
     
-    init(category: SidebarCategory, selection: Binding<Parcel?>) {
+    init(category: SidebarCategory, selection: Binding<Set<Parcel>>) {
         self.category = category
         self._selection = selection
         
@@ -50,23 +50,33 @@ struct ParcelListView: View {
                                 ParcelRowView(parcel: parcel)
                             }
                             .contextMenu {
+                                let targets = selection.contains(parcel) ? Array(selection) : [parcel]
+                                
                                 Button {
-                                    parcel.archived.toggle()
-                                    parcel.lastUpdated = Date()
-                                    try? PersistenceController.shared.container.viewContext.save()
+                                    for p in targets {
+                                        p.archived.toggle()
+                                        p.lastUpdated = Date()
+                                    }
+                                    saveContext()
+                                    if !targets.isEmpty {
+                                        selection.subtract(targets) // Clear selection if archived so they disappear cleanly
+                                    }
                                 } label: {
-                                    Label(parcel.archived ? "Unarchive" : "Archive", systemImage: parcel.archived ? "arrow.uturn.backward.square" : "archivebox")
+                                    Label(targets.count > 1 ? "Archive \(targets.count) Parcels" : (parcel.archived ? "Unarchive" : "Archive"), systemImage: parcel.archived ? "arrow.uturn.backward.square" : "archivebox")
                                 }
                                 
                                 Button(role: .destructive) {
-                                    deleteParcel(parcel)
+                                    deleteParcels(targets)
+                                    if !targets.isEmpty {
+                                        selection.subtract(targets)
+                                    }
                                 } label: {
-                                    Label("Delete", systemImage: "trash")
+                                    Label(targets.count > 1 ? "Delete \(targets.count) Parcels" : "Delete", systemImage: "trash")
                                 }
                             }
                         }
                         .onDelete { indexSet in
-                            deleteParcels(offsets: indexSet, in: categoryParcels)
+                            deleteParcelsOffsets(offsets: indexSet, in: categoryParcels)
                         }
                     }
                 }
@@ -85,16 +95,16 @@ struct ParcelListView: View {
         }
     }
     
-    private func deleteParcels(offsets: IndexSet, in sourceArray: [Parcel]) {
+    private func deleteParcelsOffsets(offsets: IndexSet, in sourceArray: [Parcel]) {
         withAnimation {
             offsets.map { sourceArray[$0] }.forEach(PersistenceController.shared.container.viewContext.delete)
             saveContext()
         }
     }
     
-    private func deleteParcel(_ parcel: Parcel) {
+    private func deleteParcels(_ targetParcels: [Parcel]) {
         withAnimation {
-            PersistenceController.shared.container.viewContext.delete(parcel)
+            targetParcels.forEach { PersistenceController.shared.container.viewContext.delete($0) }
             saveContext()
         }
     }

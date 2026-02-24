@@ -88,8 +88,11 @@ struct ParcelRowView: View {
                         .foregroundColor(.blue)
                     
                     // Shows the real ETA extracted from the tracking page
-                    if let etaDate = parcel.estimatedDeliveryDate {
-                        // Text("ETA: \(etaDate.formatted(date: .abbreviated, time: .omitted))")
+                    if let eventDate = latestEventDate {
+                        Text(eventDate.formatted(.dateTime.month().day().hour().minute()))
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    } else if let etaDate = parcel.estimatedDeliveryDate {
                         Text("ETA: \(etaDate.formatted(.dateTime.month().day()))")
                             .font(.caption2)
                             .foregroundColor(.secondary)
@@ -105,6 +108,15 @@ struct ParcelRowView: View {
     }
     
     // MARK: - Computed Properties for Logic
+    
+    var latestEventDate: Date? {
+        guard let historyString = parcel.trackingHistory,
+              let data = historyString.data(using: .utf8),
+              let events = try? JSONDecoder().decode([TrackingTimelineEvent].self, from: data) else {
+            return nil
+        }
+        return events.first?.timestamp
+    }
     
     var needsUpdate: Bool {
         // If there's no tracking history, it needs an update
