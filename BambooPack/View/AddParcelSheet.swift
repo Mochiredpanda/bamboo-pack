@@ -197,7 +197,7 @@ struct AddParcelSheet: View {
     }
     
     private func saveParcel() {
-        viewModel.addParcel(
+        let newParcel = viewModel.addParcel(
             title: title,
             trackingNumber: trackingNumber,
             direction: direction,
@@ -208,6 +208,13 @@ struct AddParcelSheet: View {
             purpose: purpose,
             productURL: productURL
         )
+        
+        if let tracking = newParcel.trackingNumber, !tracking.isEmpty {
+            Task {
+                await viewModel.syncParcel(newParcel)
+            }
+        }
+        
         dismiss()
     }
     

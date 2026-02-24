@@ -113,7 +113,7 @@ class ParcelViewModel: ObservableObject {
         purpose: String? = nil,
         estimatedDeliveryDate: Date? = nil,
         productURL: String? = nil
-    ) {
+    ) -> Parcel {
         let newParcel = Parcel(context: viewContext)
         newParcel.id = UUID()
         // Sanitize
@@ -155,6 +155,7 @@ class ParcelViewModel: ObservableObject {
         }
         
         saveContext()
+        return newParcel
     }
     
     func updateStatus(parcel: Parcel, status: ParcelStatus) {

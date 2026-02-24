@@ -27,15 +27,15 @@ struct SettingsView: View {
                             Text(provider.rawValue).tag(provider)
                         }
                     }
-                    .onChange(of: selectedProvider) { newValue in
-                        loadApiKey(for: newValue)
+                    .onChange(of: selectedProvider) {
+                        loadApiKey(for: selectedProvider)
                         Task { await validateCurrentKey() }
                     }
                     
                     HStack {
                         SecureField("API Key", text: $apiKey)
                             .textFieldStyle(.roundedBorder)
-                            .onChange(of: apiKey) { _ in
+                            .onChange(of: apiKey) {
                                 if validationStatus != .idle {
                                     validationStatus = .idle
                                 }
