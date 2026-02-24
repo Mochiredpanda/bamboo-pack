@@ -216,6 +216,9 @@ struct SettingsView: View {
             case .trackingmore:
                 try await TrackingmoreService.validateKey(apiKey: apiKey)
                 validationStatus = .valid(selectedProvider)
+            case .track123:
+                try await Track123Service.validateKey(apiKey: apiKey)
+                validationStatus = .valid(selectedProvider)
             default:
                 // Other providers not implemented validation yet
                 validationStatus = .valid(selectedProvider)

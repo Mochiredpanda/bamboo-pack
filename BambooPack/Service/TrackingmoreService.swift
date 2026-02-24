@@ -1,6 +1,7 @@
 import Foundation
+import CoreData
 
-class TrackingmoreService {
+class TrackingmoreService: TrackingServiceProtocol {
     private let urlSession = URLSession.shared
     private let adapter = TrackingmoreAdapter()
     

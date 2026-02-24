@@ -11,6 +11,21 @@ class ParcelViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var syncError: String?
     
+    // Dynamically instantiate the selected service provider
+    private func currentService() -> TrackingServiceProtocol {
+        let savedProviderRaw = UserDefaults.standard.string(forKey: "selected_api_provider") ?? APIProvider.trackingmore.rawValue
+        let provider = APIProvider(rawValue: savedProviderRaw) ?? .trackingmore
+        
+        switch provider {
+        case .track123:
+            return Track123Service()
+        case .trackingmore:
+            return TrackingmoreService()
+        default:
+            return TrackingmoreService()
+        }
+    }
+    
     // MARK: - Batch Sync (New Workflow)
     
     @MainActor
@@ -28,7 +43,7 @@ class ParcelViewModel: ObservableObject {
             let activeParcels = try viewContext.fetch(request)
             
             // 2. Execute tracking sync
-            let service = TrackingmoreService()
+            let service = currentService()
             let synchronizedResults = try await service.syncActiveParcels(activeParcels)
             
             // 3. Update Core Data from Normalized Models
@@ -74,7 +89,7 @@ class ParcelViewModel: ObservableObject {
         syncError = nil
         
         do {
-            let service = TrackingmoreService()
+            let service = currentService()
             // We can reuse the batch sync method by passing a single-element array
             let synchronizedResults = try await service.syncActiveParcels([parcel])
             
